@@ -1,4 +1,7 @@
 
+```julia
+module Learn
+
 function simulate_π(n)
     in_quad_circle(x, y) = x^2 + y^2 <= 1
     τ = 0
@@ -15,11 +18,12 @@ end
 π = simulate_π(10000)
 println(π)  # 3.142
 
-
-
-"""
-Constructor
+end
 ```
+
+
+##### Constructor
+```julia
 type Foo
     bar
     baz
@@ -28,22 +32,134 @@ foo = Foo(1,2)
 ```
 - outer constructor methods
     - convenience in constructing objects
+        - can only call inner constructor
     - create `Foo` with 0 or 1 argument
     - `Foo(x) = Foo(x, x)`
     - note this once is called `Foo()=  Foo(0)` instead of default arg
 - inner constructor methods
-    -
+    - goal
+        - enforce invariants and
+        - allow construction of self-referential objects
+    - syntax
+        - declared inside `type` block
+        - access to locally existent function called `new`, which creates objects of the block's type
+        - if defined, no default constructor methods
+            - equivalent to `Foo(bar, baz) = new(bar, baz)`
+    ```julia
+    struct OrderedPair
+        x::Real
+        y::Real
+        OrderedPair(x,y) = x > y ? error("out of order") : new(x, y)
+    end
+    OrderedPair(2,1) # gives error
+    ```
+- best practice
+    - as few as possible inner constructor, taking all arguments explicitly and enforce error checking and transformation
+    - outer function used to supplied default arguments or auxiliary transformations
+- incomplete initialization
+    ```julia
+    mutable struct SelfReferential
+       obj::SelfReferential
+    end
+    b = SelfReferential(a)  # where do obj come from
+    ```
+    - `new`
+        - allowed to be called with fewer than number of fields the type has
+        - return an object with unspecified fields uninitialized
+        - inner constructor method use this incomplete object to finish initialization and assign it to `b`
+    ```julia
+    mutable struct SelfReferential
+        obj::SelfReferential
+        SelfReferential() = (x = new(); x.obj = x)
+    end
+    ```
+    - plain data type
+        - primitive types and immutable struct of other plain data types is uninitialized to random value
+- parametric constructor
+    ```julia
+    struct Point{T<:Real}
+        x::T
+        y::T
+    end
+
+    Point(1,2)          # Point{Int64}(1, 2)
+    Point(1.0,2.0)      # Point{Float64}(1.0, 2.5)
+    Point{Int64}(1, 2)  # Point{Int64}(1, 2)
+    ```
+    - `Point{T}` is a distinct constructor function for each type `T`
+        - `Point{T<:Real}` provides an inner constructor for each `T`
+    ```julia
+    # Automatically generate 1 inner constructor for each possible T<:Real
+    # and a general outer constructor that takes in a pair of real arguments
+    struct Point{T<:Real}
+        x::T
+        y::T
+        Point{T}(x, y) where {T<:Real} = new(x, y)
+    end
+    Point(x::T, y::T) where {T<:Real} = Point{T}(x, y)
+    ```
+    - examples
+        - `Point{Int64}(1,2)` invokes inner constructor
+        - `Point(1,2)` invokes outer constructor,
+            - works for args of same type
+            - raise no method error if args of different type
+    - A constructor that promotes integer to float
+        - `Point(x::Int64, y::Float64) = Point(convert(Float64,x),y)`
+    - Or just use `promote`
+        - promote to a common type
+        - `Point(x::Real, y::Real) = Point(promote(x,y)...)`
+- case study
+```julia
+struct OurRational{T<:Integer} <:Real
+    num::T
+    den::T
+    function ourRational{T}(num::T, den::T) where T<:Integer
+        # Invariant: checks they are all non-zero
+        if num == 0 && den == 0
+            error("invalid rational 0/0")
+        end
+        # Transformation: Convert to lowest term ...
+        g = gcd(den, num)
+        num = div(num, g)
+        den = div(den, g)
+        new(num, den)
+    end
+end
+
+# for OurRational(1,1)
+OurRational(n::T, d::T) where {T<:Integer} = OurRational{T}(n,d)
+# for promoting n,d to a common type
+OurRational(n::Integer, d::Integer) = OurRational(promote(n,d)...)
+# for default argument for `d=1`
+OurRational(n::Integer) = OurRational(n,one(n))
+# define an operator ⊘
+⊘(n::Integer, d::Integer) = OurRational(n,d)
+# custom for rational y
+⊘(x::Integer, y::OurRational) = (x*y.den) ⊘ y.num
+# for complex values
+⊘(x::Complex, y::Real) = complex(real(x) ⊘ y, imag(x) ⊘ y)
+⊘(x::Real, y::Complex) = (x*y') ⊘ real(y*y')
+function ⊘(x::Complex, y::Complex)
+   xy = x*y'
+   yy = real(y*y')
+   complex(real(xy) ⊘ yy, imag(xy) ⊘ yy)
+end
+```
+- outer-only constructors
+    - to suppress
 
 
 
-"""
 
-"""
-Type System
+
+
+
+
+##### Type System
 - type system
     - concrete types
         - may not subtype each other
-        - final, and only have abstract type as their supertypes
+        - final, and only have abstract type as their super types
     - no division between object and non-object values
         - all values are true objects having a type belonging to a fully connected type tree
     - no compile-time type
@@ -61,7 +177,7 @@ Type System
     - describe a set of related concrete types
     - define new abstract type
         - default parent type is `Any`
-    ```
+    ```julia
     abstract type <<name>> end
     abstract type <<name>> <: <<supertype>> end
     ```
@@ -78,7 +194,7 @@ Type System
 - composite types
     - a collection of anmed fields, an instance of which can be treated as a single value
     - all values are objects, but functions are not bundled with associated methods
-    ```
+    ```julia
     struct Foo
         bar
         baz::Int
@@ -129,12 +245,10 @@ Type System
     - `isa(obj, type)`
     - `typeof()`
     - `supertype()`
-"""
 
 
 
-"""
-Multi-dimensional Arrays
+##### Multi-dimensional Arrays
 - array
     - a collection of objects stored in a multi-dimensional grid
     - function argument pass by reference, so mutation to input argument visible in parent function
@@ -162,13 +276,13 @@ Multi-dimensional Arrays
 - indexing
     - `X = A[I_1, I_2, ..., I_n]`
         - `:` select all indices in the dimension
-        - `from:to:stride` select contiguous or strided subselections
-        - `end` used to represnet last index of each dimension
+        - `from:to:stride` select contiguous or strided sub selections
+        - `end` used to represent last index of each dimension
             - `X[1:end-1]`, all but last item in 1d array
 - assignment
     - `A[I_1, I_2, .., I_n] = X`
 - indices types
-    - scalaar index, nonboolean
+    - scalar index, non-boolean
     - array of scalar index,
         - []
         - ranges
@@ -182,19 +296,16 @@ Multi-dimensional Arrays
     - `for i in eachindex(A) ... end`
         - `i` here is `Int` of `A` is an array type with fast linear indicing. otherwise it is a `CartesianIndex`
 - array and vectorized operation and functions
-    - -, +, *, /, \, ^, ==, !=, ≈,
-        - elementwise
-    - dot syntax for vecotrized operation for EVERY binary operator
+    - -, +, * , /, \ , ^, ==, !=, ≈,
+        - element wise
+    - dot syntax for vectorized operation for EVERY binary operator
         - `f.(args...)` , i.e. `sin.(x)`
 - broadcasting
-    - expands singleton dimensions in array arguments to match corresponding dimension wihtout extra memory
-    - applies functions elementwise
-    ```
+    - expands singleton dimensions in array arguments to match corresponding dimension without extra memory
+    - applies functions element-wise
+    ```julia
     a, A = rand(2,1), rand(2,3);
     repmat(a,1,3)+A  # too wasteful
 
-    broadcast(+, a, A) # effifcient
-
+    broadcast(+, a, A) # efficient
     ```
-
-"""

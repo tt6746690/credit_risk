@@ -1,4 +1,12 @@
 
+
+#### Resources
+
++ [julia](https://github.com/JuliaLang/julia)
++ [distribution](https://juliastats.github.io/Distributions.jl/)
+
+#### Starter
+
 ```julia
 module Learn
 
@@ -20,6 +28,56 @@ println(π)  # 3.142
 
 end
 ```
+
+
+##### Random Numbers
+
+```julia
+rand(Int, 2)
+rand(MersenneTwister(0), Dict(1=>2, 3=>4)) # 1=>2
+randn((2, 3))
+```
+- uses Mersenne twister library
+    - uniform random numbers
+- `rand([rng=GLOBAL_RNG], [S], [dims...])`
+    - `rand!([rng], A, [S=eltype(A)])`
+- `randn([rng], [T=Float64], [dims...])`
+    - normally distributed random number of type `T` with mean 0 and stddev 1
+    - `randn!([rng=GLOBAL_RNG], A::AbstractArray) -> A`
+- `randstring([rng=GLOBAL_RNG], [chars], [len=8])`
+- `seed!([rng=GLOBAL_RNG], seed) -> rng`
+    - reseed random number generator
+    - if seed provided, sequence of number is reproducible
+
+
+
+##### Modules
+
+```julia
+module MyModule
+using Lib
+
+using BigLib: thing1, thing2
+
+import Base.show
+
+importall OtherLib
+
+export MyType, foo
+
+struct MyType
+    x
+end
+
+bar(x) = 2x
+foo(a::MyType) = bar(a.x) + 1
+
+show(io::IO, a::MyType) = print(io, "MyType $(a.x)")
+end
+```
+- module
+    - introduce global scope with `module Name ... end`
+
 
 
 ##### Constructor
@@ -147,9 +205,6 @@ end
 ```
 - outer-only constructors
     - to suppress
-
-
-
 
 
 
@@ -308,4 +363,34 @@ end
     repmat(a,1,3)+A  # too wasteful
 
     broadcast(+, a, A) # efficient
+    ```
+- implementation
+    - `AbstractArray{T,N}`
+        - `AbstractVector` and `AbstractMatrix` for 1-D and 2-D case
+        - may have different undelrying structure,
+        - but generally have `size` `getindex` `setindex!` ...
+    - `DenseArray`
+        - abstract subtype of `AbstractArray`
+        - arrays that store elements contiguously in column major order
+        - concrete types like `Vector` and `Matrix` are alises for 1-D and 2-D case
+    - `SubArray`
+        - performs indexing by sharing memory with original array, rather than copy
+            - just store the index, and not data
+        - created from `view`, same as calling `getindex`
+            - but data left in place
+            - `@views` will convert expression, code block, or any `array[...]` to a view instead
+    - `BitArray`
+        - space-efficient packed boolean arrays, 1 bit per boolean value
+    - strided array
+        - elements laid out in regular offsets
+        - defines `stride(A)`
+        - note
+            - `DenseArray` is a strided array with stride=1
+    - QR decomposition of small section of large array without temporaries and calling LAPACK function
+    ```julia
+    a = rand(10,10)
+    b = view(a, 2:2:8, 2:2:4)
+    (q, r) = qr(b)
+    q
+    r
     ```

@@ -33,14 +33,25 @@ struct Parameter
     # H[n, c] represent threshold for migrating to c from current state
     H::Array{Float64, 2}
 
-    function Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H)
+
+    # Computed values from above fields
+    # √(1 - βᵗβ)
+    denom::Array{Float64, 1}
+    # weights
+    # weights[n, c] := w_n * lgc[n, c] where w_n := ead[n] ./ sum(ead)
+    weights::Array{Float64, 2}
+
+
+    function Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
         @checksize (N, C)   cmm
         @checksize (N,)     ead
         @checksize (N, C)   lgc
         @checksize (N, S)   β
         @checksize (N,)     cn
         @checksize (N, C)   H
-        new(N, C, S, l, cmm, ead, lgc, cn, β, H)
+        @checksize (N,)     denom
+        @checksize (N, C)   weights
+        new(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
     end
 end
 
@@ -54,7 +65,6 @@ function Parameter(N, C, S, l)
     cmm = zeros(N, C)
     cmm[:,1], cmm[:,2] = p, 1 .- p  # binary case ...
     ead = 0.5 .+ rand(N)
-    ead = ead ./ sum(ead)
     lgc = zeros(N, C)
     lgc[:,1] = @. floor(5(1:N)/N)^2
     cn = fill(2, N)
@@ -67,21 +77,29 @@ function Parameter(N, C, S, l)
     cum_cmm = cumsum(cmm, dims=2)
     H = invnormcdf.(cum_cmm)
 
-    return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H)
+    # Computed
+    denom = @. sqrt(1 - $sum((β).^2, dims=2))
+    denom = reshape(denom, :)
+    weights = ead ./ sum(ead)
+    weights = weights .* lgc
+
+    return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
 end
 
 
-function unpack(parameter::Parameter)
+function unpack(p::Parameter)
     return (
-        parameter.N,
-        parameter.C,
-        parameter.S,
-        parameter.l,
-        parameter.cmm,
-        parameter.ead,
-        parameter.lgc,
-        parameter.cn,
-        parameter.β,
-        parameter.H
+        p.N,
+        p.C,
+        p.S,
+        p.l,
+        p.cmm,
+        p.ead,
+        p.lgc,
+        p.cn,
+        p.β,
+        p.H,
+        p.denom,
+        p.weights
     )
 end

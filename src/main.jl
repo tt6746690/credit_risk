@@ -11,11 +11,10 @@ c = 4
 s = 10
 l = 0.2
 
-p = Parameter(n,c,s,l)
+nz = 100
+ne = 100
 
-nz = 10
-ne = 10
-
-simple_mc(p, (nz, ne))
+p = simple_mc(p, (nz, ne))
+print(p)
 
 end

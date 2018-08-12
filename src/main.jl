@@ -1,21 +1,21 @@
+import Profile: @profile
+import BenchmarkTools: @btime, @benchmark
+
 include("CreditRisk.jl")
 
 module tst
-import Main.CreditRisk: Parameter
-
+import Main.CreditRisk: Parameter, simple_mc
 
 n = 20
 c = 4
 s = 10
 l = 0.2
 
-x = ones(n, c)
-y = ones(n, s)
-z = ones(n)
-
-# p = Parameter(n,c,s,0.2,x,z,x,y,z,x)
 p = Parameter(n,c,s,l)
-print(summary(p))
-print(p)
+
+nz = 10
+ne = 10
+
+simple_mc(p, (nz, ne))
 
 end

@@ -1,6 +1,7 @@
 module CreditRisk
 
 include("utils.jl")
-include("parameters.jl")
+include("parameter.jl")
+include("algorithm.jl")
 
 end

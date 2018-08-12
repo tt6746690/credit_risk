@@ -1,16 +1,13 @@
-import Profile: @profile
-import BenchmarkTools: @btime, @benchmark
-
 include("utils.jl")
 
 " Parameters related to the credit risk problem "
 struct Parameter
     # Number of creditors
-    N::Int32
+    N::Int64
     # Number of credit states
-    C::Int32
+    C::Int64
     # Dimension for Systematic Risk Factor Z, i.e. Z ∼  N(0, I_S)
-    S::Int32
+    S::Int64
     # Tail for computing P(L ⩾ l)
     l::Float64
 
@@ -27,7 +24,7 @@ struct Parameter
 
     # Initial credit state for each creditor
     # In case of binary credit states, initially at c=2, i.e. non-default state
-    cn::Array{Int32, 1}
+    cn::Array{Int64, 1}
 
     # β[n, c] indicates n-th creditor's sensitivity to systematic risk factor Z
     β::Array{Float64, 2}
@@ -71,4 +68,20 @@ function Parameter(N, C, S, l)
     H = invnormcdf.(cum_cmm)
 
     return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H)
+end
+
+
+function unpack(parameter::Parameter)
+    return (
+        parameter.N,
+        parameter.C,
+        parameter.S,
+        parameter.l,
+        parameter.cmm,
+        parameter.ead,
+        parameter.lgc,
+        parameter.cn,
+        parameter.β,
+        parameter.H
+    )
 end

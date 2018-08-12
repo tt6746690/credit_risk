@@ -6,15 +6,15 @@ include("CreditRisk.jl")
 module tst
 import Main.CreditRisk: Parameter, simple_mc
 
-n = 20
+n = 2500
 c = 4
-s = 10
+s = 5
 l = 0.2
 
-nz = 100
-ne = 100
+nz = 1000
+ne = 1000
 
-p = simple_mc(p, (nz, ne))
+@time p = simple_mc(Parameter(n,c,s,l), (nz, ne))
 print(p)
 
 end

@@ -1,25 +1,7 @@
-module CreditRisk
-
-import Base
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
 
-import Distributions: Normal
-
-" Checks array's size is equal to expected, raise ArgumentError otherwise "
-macro checksize(expected, array)
-    return quote
-        name = summary($(esc(array)))
-        actual = size($(esc(array)))
-        expected = $(esc(expected))
-        if expected != actual
-            throw(ArgumentError("""Incorrect dimension for $name:
-                expected $expected != actual $actual"""))
-        end
-    end
-end
-
-invunitnormcdf(p) = quantile(Normal(0, 1), p)
+include("utils.jl")
 
 " Parameters related to the credit risk problem "
 struct Parameter
@@ -86,21 +68,7 @@ function Parameter(N, C, S, l)
 
     # H[n, c] = inverse_unit_Gaussian(∑ᵧ cmm[c(n), γ])
     cum_cmm = cumsum(cmm, dims=2)
-    H = invunitnormcdf.(cum_cmm)
-    display(H)
-end
+    H = invnormcdf.(cum_cmm)
 
-n = 20
-c = 4
-s = 10
-
-x = ones(n, c)
-y = ones(n, s)
-z = ones(n)
-
-
-# p = Parameter(n,c,s,0.2,x,z,x,y,z,x)
-p = Parameter(n,c,s,0.2)
-print(summary(p))
-
+    return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H)
 end

@@ -3,6 +3,7 @@
 #### Resources
 
 + [julia](https://github.com/JuliaLang/julia)
++ [julia doc](https://docs.julialang.org/en/latest/)
 + [distribution](https://juliastats.github.io/Distributions.jl/)
 
 #### Starter

@@ -6,6 +6,14 @@ macro varname(variable)
     string(variable)
 end
 
+" Expand S-expression for macro expression "
+macro msexpr(value)
+    return quote
+        Meta.show_sexpr(@macroexpand $(value))
+    end
+end
+
+
 " Checks array's size is equal to expected, raise ArgumentError otherwise "
 macro checksize(expected, array)
     return quote

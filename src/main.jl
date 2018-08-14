@@ -1,21 +1,30 @@
 include("CreditRisk.jl")
 
 module tst
-import Profile
+import Random: seed!
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
 
-import Main.CreditRisk: Parameter, simple_mc
+import Main.CreditRisk: Parameter, simple_mc, bernoulli_mc
 
 n = 2500
 c = 4
 s = 5
 l = 0.2
 
-nz = 500
-ne = 500
+nz = 600
+ne = 600
 
-@time p = simple_mc(Parameter(n,c,s,l), (nz, ne))
-print(p)
+seed!(0)
+
+open("simple_mc", "w") do io
+    @time p = simple_mc(Parameter(n,c,s,l), (nz, ne), io)
+    print(p)
+end
+
+# open("bernoulli_mc", "w") do io
+#     @time p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne), io)
+#     print(p)
+# end
 
 end

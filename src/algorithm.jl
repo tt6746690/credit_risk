@@ -88,7 +88,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
             @. ind = (pn1z >= u)
             L = sum(weights[:,1] .* ind)
             push!(estimates, (L >= l))
-            if (i*ne + j) % 50 == 0
+            if (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
                 flush(io)
             end

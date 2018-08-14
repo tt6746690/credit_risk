@@ -12,19 +12,19 @@ c = 4
 s = 5
 l = 0.2
 
-nz = 600
-ne = 600
+nz = 10000
+ne = 10000
 
 seed!(0)
 
-open("simple_mc", "w") do io
-    @time p = simple_mc(Parameter(n,c,s,l), (nz, ne), io)
-    print(p)
-end
-
-# open("bernoulli_mc", "w") do io
-#     @time p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne), io)
+# open("simple_mc", "w") do io
+#     @time p = simple_mc(Parameter(n,c,s,l), (nz, ne), io)
 #     print(p)
 # end
+
+open("bernoulli_mc", "w") do io
+    @time p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne), io)
+    print(p)
+end
 
 end

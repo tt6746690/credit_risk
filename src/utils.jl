@@ -30,3 +30,12 @@ end
 function invnormcdf(p; μ=0, σ=1)
     return quantile(Normal(μ, σ), p)
 end
+
+" Read 1 float from a line at a time from a file and populates `estimates` "
+function get_estimates!(estimates::Vector{Float64}, filename::String)
+    open(filename, "r") do io
+        for line in eachline(io)
+            append!(estimates, parse(Float64, line))
+        end
+    end
+end

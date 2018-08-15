@@ -17,7 +17,7 @@ Returns the Monte Carlo estimate of default probability
 
 ~20s, 18GB for (nz, ne) == (500, 500)
 """
-function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO)
+function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
@@ -62,7 +62,7 @@ where p[n] is a function of outer level sample `Z`
     `sample_size` represents `(nZ, nE)`, number of samples for
         systematic risk factor `Z` and idiosyncratic risk factor `ϵ`
 """
-function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO)
+function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 

@@ -1,9 +1,11 @@
 include("CreditRisk.jl")
 
 module tst
+import Juno
 import Serialization: serialize, deserialize
 import Plots: plot, plot!
 import Random: seed!
+import Profile
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
 
@@ -18,12 +20,17 @@ c = 4
 s = 5
 l = 0.2
 
-nz = 200
-ne = 200
+nz = 2
+ne = 2
 
 seed!(0)
 
-@benchmark p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
+
+Profile.clear()
+Profile.init(delay=0.01)
+@profile bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
+Juno.profiletree()
+Juno.profiler()
 # print(p)
 
 end

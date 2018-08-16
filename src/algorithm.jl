@@ -17,7 +17,7 @@ Returns the Monte Carlo estimate of default probability
 
 ~20s, 18GB for (nz, ne) == (500, 500)
 """
-function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
+function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
@@ -38,7 +38,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::I
             @. ind = Y <= H[:,1]
             L = sum(weights[:,1] .* ind)
             push!(estimates, (L >= l))
-            if (i*ne + j) % 10 == 0
+            if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
                 flush(io)
             end
@@ -62,7 +62,7 @@ where p[n] is a function of outer level sample `Z`
     `sample_size` represents `(nZ, nE)`, number of samples for
         systematic risk factor `Z` and idiosyncratic risk factor `ϵ`
 """
-function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
+function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
@@ -88,7 +88,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
             @. ind = (pn1z >= u)
             L = sum(weights[:,1] .* ind)
             push!(estimates, (L >= l))
-            if (i*ne + j) % 500 == 0
+            if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
                 flush(io)
             end
@@ -96,3 +96,37 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     end
     return mean(estimates)
 end
+
+
+
+#
+# function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
+#     nz, ne = sample_size
+#     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+#
+#     Z = zeros(S)
+#     E = zeros(N)
+#
+#     Φ = Normal()
+#     Zdist = MvNormal(S, 1)
+#
+#     estimates = BitArray{1}()
+#     for i = 1:nz
+#         rand!(Zdist, Z)
+#         @. pinv1 = (H[:,1] - $(β*Z)) / denom
+#         for i = eachindex(pinv1)
+#             pn1z[i] = cdf(Φ, pinv1[i])
+#         end
+#         for j = 1:ne
+#             rand!(u)
+#             @. ind = (pn1z >= u)
+#             L = sum(weights[:,1] .* ind)
+#             push!(estimates, (L >= l))
+#             if (i*ne + j) % 500 == 0
+#                 println(io, string(mean(estimates)))
+#                 flush(io)
+#             end
+#         end
+#     end
+#     return mean(estimates)
+# end

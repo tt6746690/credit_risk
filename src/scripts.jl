@@ -1,4 +1,5 @@
-import Serialization: serialize
+import Plots: scatter
+import Serialization: serialize, deserialize
 
 include("parameter.jl")
 
@@ -6,7 +7,6 @@ function make_replications((nl, replication_per_l), filename::String)
     n = 2500
     c = 4
     s = 5
-    l = 0.2
 
     nz = 1000
     ne = 1000
@@ -20,5 +20,20 @@ function make_replications((nl, replication_per_l), filename::String)
             end
         end
         serialize(io, lp)
+    end
+end
+
+
+function plot_replications(filename::String)
+    open(filename, "r") do io
+        xys = deserialize(io)
+        print(xys)
+        xs, ys = zip(xys...)
+        plt = scatter(xs, ys;
+            ylims=(-8, 0.2),
+            ylabel="log MC estimates",
+            xlabel="tail l",
+            plot_title="log (bernoulli) MC estimates vs tail l")
+        display(plt)
     end
 end

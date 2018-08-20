@@ -1,4 +1,5 @@
 
+import Base.MathConstants: e
 import Random: rand!
 import Distributions: cdf, Normal, MvNormal
 import Statistics: mean
@@ -14,8 +15,6 @@ Returns the Monte Carlo estimate of default probability
 
     `sample_size` represents `(nZ, nE)`, number of samples for
         systematic risk factor `Z` and idiosyncratic risk factor `ϵ`
-
-~20s, 18GB for (nz, ne) == (500, 500)
 """
 function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
@@ -67,26 +66,27 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
     Z = zeros(S)
-    E = zeros(N)
-    pinv1 = zeros(N)
-    pn1z = zeros(N)
+	phi0 = zeros(N, C+1)
+	phi  = @view phi0[:,2:end]
+    pncz = zeros(N, C)
+	pn1z = @view pncz[:,1]
     u = zeros(N)
-    ind = zeros(N)
+    W = zeros(N)
 
     Φ = Normal()
+	normcdf(x) = cdf(Φ, x)
     Zdist = MvNormal(S, 1)
 
     estimates = BitArray{1}()
     for i = 1:nz
         rand!(Zdist, Z)
-        @. pinv1 = (H[:,1] - $(β*Z)) / denom
-        for i = eachindex(pinv1)
-            pn1z[i] = cdf(Φ, pinv1[i])
-        end
+        @. phi = normcdf(H - $(β*Z) / denom)
+		pncz .= diff(phi0; dims=2)
+        display(pn1z)
         for j = 1:ne
             rand!(u)
-            @. ind = (pn1z >= u)
-            L = sum(weights[:,1] .* ind)
+            @. W = (pn1z >= u)
+            L = sum(weights[:,1] .* W)
             push!(estimates, (L >= l))
             if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
@@ -98,26 +98,57 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
 end
 
 
-
+# " Computes Ψ = Σ_n ln( pn1z ⋅ e^{θ⋅w_n} ) "
+# Ψ(θ, p, w) = sum(@. log(p*e^(θ*w)))
 #
-# function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=stdout)
+# " Minimizatinon objective function for inner level twisting "
+# innerlevel_objective(p, θ, w, l) = Ψ(θ, p, w) - θ*l
+#
+# function outerlevel_twisting!(μ)
+# 	fill!(μ, 0)
+# end
+#
+# " Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
+# function innerlevel_twisting!(θ)
+# 	fill!(θ, 0)
+# end
+#
+#
+# " Given twisting parameter θ, compute twisted bernoulli probability q from p"
+# function twisted_bernoulli!(q, θ, p)
+#
+# end
+#
+# """
+#     glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
+#
+#     Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
+#         of Z and weights w
+#        ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
+#        ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
+# """
+# function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
 #     nz, ne = sample_size
 #     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 #
+#     μ = zeros(S)
 #     Z = zeros(S)
-#     E = zeros(N)
+#     W = zeros(N)
 #
 #     Φ = Normal()
-#     Zdist = MvNormal(S, 1)
 #
 #     estimates = BitArray{1}()
 #     for i = 1:nz
-#         rand!(Zdist, Z)
+#         outerlevel_twisting!(μ)
+#         rand!(MvNormal(μ, 1), Z)
 #         @. pinv1 = (H[:,1] - $(β*Z)) / denom
 #         for i = eachindex(pinv1)
 #             pn1z[i] = cdf(Φ, pinv1[i])
 #         end
 #         for j = 1:ne
+#             innerlevel_twisting!(θ)
+#
+#
 #             rand!(u)
 #             @. ind = (pn1z >= u)
 #             L = sum(weights[:,1] .* ind)

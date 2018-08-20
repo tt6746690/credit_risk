@@ -18,22 +18,19 @@ import Main.CreditRisk: make_replications, plot_replications
 n = 2500
 c = 4
 s = 5
-l = 0.4
+l = 0.2
 
-nz = 1000
-ne = 1000
+nz = 200
+ne = 200
 
 seed!(0)
-
-@time p = glassermanli_mc(Parameter(n,c,s,l), (nz, ne))
-print(p)
+@time bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
 
 
-# make_replications((3, 3), "replications2.txt")
-# plot_replications("replications2.txt")
-
-# Profile.init(delay=0.1)
-# @profile bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
+#
+# Profile.clear()
+# Profile.init(n=10^7, delay=0.1)
+# Juno.@profiler bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
 # Juno.profiletree()
 # Juno.profiler()
 

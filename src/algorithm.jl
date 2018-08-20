@@ -47,6 +47,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
 end
 
 
+
 """
     bernoulli_mc(parameter::Parameter, sample_size::Tuple{Number, Number})
 
@@ -60,6 +61,8 @@ where p[n] is a function of outer level sample `Z`
 
     `sample_size` represents `(nZ, nE)`, number of samples for
         systematic risk factor `Z` and idiosyncratic risk factor `ϵ`
+
+For n=2500, (nz,ne) = (1000,1000), ~10s
 """
 function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
@@ -72,6 +75,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
 	pn1 = @view pnc[:,1]
     u = zeros(N)
     W = zeros(N)
+    losses = zeros(N)
 
     Φ = Normal()
 	normcdf(x) = cdf(Φ, x)
@@ -81,12 +85,12 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
-        pnc .= diff(phi0; dims=2)
+        diff!(pnc, phi0; dims=2)
         for j = 1:ne
             rand!(u)
             @. W = (pn1 >= u)
-            L = sum(weights[:,1] .* W)
-            push!(estimates, (L >= l))
+            @. losses = weights[:,1] * W
+            push!(estimates, (sum(losses) >= l))
             if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
                 flush(io)
@@ -141,6 +145,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
 	qn1 = @view qnc[:,1]
     u = zeros(N)
     W = zeros(N)
+    losses = zeros(N)
 
     Φ = Normal()
 	normcdf(x) = cdf(Φ, x)
@@ -150,14 +155,14 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
         outerlevel_twisting!(μ)
         rand!(MvNormal(μ, 1), Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
-        pnc .= diff(phi0; dims=2)
+        diff!(pnc, phi0; dims=2)
         for j = 1:ne
             θ = innerlevel_twisting()
             twisted_bernoulli!(qnc, θ, pnc, weights)
             rand!(u)
             @. W = (qn1 >= u)
-            L = sum(weights[:,1] .* W)
-            push!(estimates, (L >= l))
+            @. losses = weights[:,1] * W
+            push!(estimates, (sum(losses) >= l))
             if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))
                 flush(io)

@@ -68,8 +68,8 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     Z = zeros(S)
 	phi0 = zeros(N, C+1)
 	phi  = @view phi0[:,2:end]
-    pncz = zeros(N, C)
-	pn1z = @view pncz[:,1]
+    pnc = zeros(N, C)
+	pn1 = @view pnc[:,1]
     u = zeros(N)
     W = zeros(N)
 
@@ -81,10 +81,10 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
-        pncz .= diff(phi0; dims=2)
+        pnc .= diff(phi0; dims=2)
         for j = 1:ne
             rand!(u)
-            @. W = (pn1z >= u)
+            @. W = (pn1 >= u)
             L = sum(weights[:,1] .* W)
             push!(estimates, (L >= l))
             if io != nothing && (i*ne + j) % 500 == 0
@@ -97,66 +97,72 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
 end
 
 
-# " Computes Ψ = Σ_n ln( pn1z ⋅ e^{θ⋅w_n} ) "
-# Ψ(θ, p, w) = sum(@. log(p*e^(θ*w)))
-#
-# " Minimizatinon objective function for inner level twisting "
-# innerlevel_objective(p, θ, w, l) = Ψ(θ, p, w) - θ*l
-#
-# function outerlevel_twisting!(μ)
-# 	fill!(μ, 0)
-# end
-#
-# " Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
-# function innerlevel_twisting!(θ)
-# 	fill!(θ, 0)
-# end
-#
-#
-# " Given twisting parameter θ, compute twisted bernoulli probability q from p"
-# function twisted_bernoulli!(q, θ, p)
-#
-# end
-#
-# """
-#     glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
-#
-#     Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
-#         of Z and weights w
-#        ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
-#        ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
-# """
-# function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
-#     nz, ne = sample_size
-#     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
-#
-#     μ = zeros(S)
-#     Z = zeros(S)
-#     W = zeros(N)
-#
-#     Φ = Normal()
-#
-#     estimates = BitArray{1}()
-#     for i = 1:nz
-#         outerlevel_twisting!(μ)
-#         rand!(MvNormal(μ, 1), Z)
-#         @. pinv1 = (H[:,1] - $(β*Z)) / denom
-#         for i = eachindex(pinv1)
-#             pn1z[i] = cdf(Φ, pinv1[i])
-#         end
-#         for j = 1:ne
-#             innerlevel_twisting!(θ)
-#
-#
-#             rand!(u)
-#             @. ind = (pn1z >= u)
-#             L = sum(weights[:,1] .* ind)
-#             push!(estimates, (L >= l))
-#             if (i*ne + j) % 500 == 0
-#                 println(io, string(mean(estimates)))
-#                 flush(io)
-#             end
-#         end
-#     end
-#     return mean(estimates)
-# end
+" Computes Ψ = Σ_n ln( pn1z ⋅ e^{θ⋅w_n} ) "
+Ψ(θ, p, w) = sum(@. log(p*e^(θ*w)))
+
+" Minimizatinon objective function for inner level twisting "
+innerlevel_objective(p, θ, w, l) = Ψ(θ, p, w) - θ*l
+
+function outerlevel_twisting!(μ)
+	fill!(μ, 0)
+end
+
+" Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
+function innerlevel_twisting()
+	0
+end
+
+" Given twisting parameter θ, compute twisted bernoulli probability q from p
+    q = p * e^{θ⋅w} / Σ_c p * e^{θ⋅w} "
+function twisted_bernoulli!(q, θ, p, w)
+    twist = @. p*e^(θ*w)
+    mgf = sum(twist; dims=2)
+    return twist  ./ mgf
+end
+
+"""
+    glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
+
+    Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
+        of Z and weights w
+       ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
+       ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
+"""
+function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
+    nz, ne = sample_size
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+
+    μ = zeros(S)
+    Z = zeros(S)
+	phi0 = zeros(N, C+1)
+	phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+    qnc = zeros(N, C)
+	qn1 = @view qnc[:,1]
+    u = zeros(N)
+    W = zeros(N)
+
+    Φ = Normal()
+	normcdf(x) = cdf(Φ, x)
+
+    estimates = BitArray{1}()
+    for i = 1:nz
+        outerlevel_twisting!(μ)
+        rand!(MvNormal(μ, 1), Z)
+        @. phi = normcdf((H - $(β*Z)) / denom)
+        pnc .= diff(phi0; dims=2)
+        for j = 1:ne
+            θ = innerlevel_twisting()
+            twisted_bernoulli!(qnc, θ, pnc, weights)
+            rand!(u)
+            @. W = (qn1 >= u)
+            L = sum(weights[:,1] .* W)
+            push!(estimates, (L >= l))
+            if io != nothing && (i*ne + j) % 500 == 0
+                println(io, string(mean(estimates)))
+                flush(io)
+            end
+        end
+    end
+    return mean(estimates)
+end

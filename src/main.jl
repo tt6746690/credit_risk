@@ -10,7 +10,7 @@ import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
 
 import Main.CreditRisk: Parameter
-import Main.CreditRisk: simple_mc, bernoulli_mc
+import Main.CreditRisk: simple_mc, bernoulli_mc, glassermanli_mc
 import Main.CreditRisk: get_estimates!
 import Main.CreditRisk: make_replications, plot_replications
 
@@ -25,10 +25,9 @@ ne = 1000
 
 seed!(0)
 
-for i in 1:10
-    @time p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
-    print(p)
-end
+@time p = glassermanli_mc(Parameter(n,c,s,l), (nz, ne))
+print(p)
+
 
 # make_replications((3, 3), "replications2.txt")
 # plot_replications("replications2.txt")

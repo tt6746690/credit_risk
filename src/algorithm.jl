@@ -80,9 +80,8 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     estimates = BitArray{1}()
     for i = 1:nz
         rand!(Zdist, Z)
-        @. phi = normcdf(H - $(β*Z) / denom)
-		pncz .= diff(phi0; dims=2)
-        display(pn1z)
+        @. phi = normcdf((H - $(β*Z)) / denom)
+        pncz .= diff(phi0; dims=2)
         for j = 1:ne
             rand!(u)
             @. W = (pn1z >= u)

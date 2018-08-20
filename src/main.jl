@@ -29,6 +29,7 @@ for i in 1:10
     @time p = bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
     print(p)
 end
+
 # make_replications((3, 3), "replications2.txt")
 # plot_replications("replications2.txt")
 

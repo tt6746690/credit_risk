@@ -20,14 +20,19 @@ n = 2500
 c = 4
 s = 5
 l = 0.2
-nz = 1000
-ne = 1000
+nz = 1
+ne = 1
+
+θ = 2
+μ = Vector(1:s)
+
+make_replications((3, 5), "bernoulli_vs_glassermanli.txt")
 
 # @time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
 # display(p)  # 0.005
-
-@time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne))
-display(p)
+#
+# @time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne), (μ, θ))
+# display(p)
 
 
 # Profile.clear()

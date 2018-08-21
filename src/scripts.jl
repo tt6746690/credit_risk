@@ -3,7 +3,7 @@ import Serialization: serialize, deserialize
 
 include("parameter.jl")
 
-function make_replications((nl, replication_per_l), filename::String)
+function make_replications((nl, nrep), filename::String)
     n = 2500
     c = 4
     s = 5
@@ -11,13 +11,17 @@ function make_replications((nl, replication_per_l), filename::String)
     ne = 1000
 
     open(filename, "w") do io
-        println(io, "l,bernoulli,glassermanli")
-        for l = range(0; stop=0.8, length=nl)
-            for _ in 1:replication_per_l
+        println(io, "l,bernoulli,glassermanli,mu,theta")
+        for l = range(0; stop=1, length=nl)
+            for rep in 1:nrep
                 @time p1 = bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
-                @time p2 = glassermanli_mc(Parameter(n,c,s,l), (nz, ne))
-                println(io, string(l) * "," * string(p1) * "," * string(p2))
-                flush(io)
+                for μ in range(0; stop=1.5, length=4)
+                    for θ in range(0; stop=1.5, length=4)
+                        @time p2 = glassermanli_mc(Parameter(n,c,s,l), (nz, ne), (fill(μ, s), θ))
+                        println(io, string(l) * "," * string(p1) * "," * string(p2) * "," * string(μ) * "," * string(θ))
+                        flush(io)
+                    end
+                end
             end
         end
     end

@@ -106,15 +106,19 @@ end
 Ψ(θ, p, w) = sum(log.(sum(@. p*e^(θ*w); dims=2)))
 
 " Minimizatinon objective function for inner level twisting "
-innerlevel_objective(p, θ, w, l) = Ψ(θ, p, w) - θ*l
+innerlevel_objective(θ, p, w, l) = Ψ(θ, p, w) - θ*l
 
 function outerlevel_twisting!(μ)
 	fill!(μ, 0)
 end
 
 " Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
-function innerlevel_twisting()
-	0
+function innerlevel_twisting(p, w, l)
+	if sum(w .* p) > l
+        return 1
+    else
+        return 0
+    end
 end
 
 " Given twisting parameter θ, compute twisted bernoulli probability q from p
@@ -133,9 +137,10 @@ end
        ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
        ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
 """
-function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
+function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing), io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+    (μ_, θ_) = extra_params
 
     μ = zeros(S)
     Z = zeros(S)
@@ -154,12 +159,20 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     estimate = 0
     estimates = zeros(ne)
     for i = 1:nz
-        outerlevel_twisting!(μ)
+        if μ_ == nothing
+            outerlevel_twisting!(μ)
+        else
+            μ = μ_
+        end
         rand!(MvNormal(μ, 1), Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
         diff!(pnc, phi0; dims=2)
         for j = 1:ne
-            θ = innerlevel_twisting()
+            if θ_ == nothing
+                θ = innerlevel_twisting(pnc, weights, l)
+            else
+                θ = θ_
+            end
             twisted_bernoulli!(qnc, θ, pnc, weights)
             rand!(u)
             @. W = (qn1 >= u)

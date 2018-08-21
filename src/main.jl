@@ -20,30 +20,23 @@ n = 2500
 c = 4
 s = 5
 l = 0.5
-nz = 2000
-ne = 2000
+nz = 200
+ne = 200
 
 θ = 2
 μ = Vector(1:s)
 
-make_replications_b((40, 30), "bernoulli2000.txt")
-
-; @time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
-; display(p)
 
 # nrep = 10
-
 # ls = range(0; stop=0.2, length=11)
 # make_replications((ls, nrep), "gl1.txt")
-
 # ls = range(0.22; stop=0.4, length=10)
 # make_replications((ls, nrep), "gl2.txt")
-
 # ls = range(0.42; stop=0.6, length=10)
 # make_replications((ls, nrep), "gl3.txt")
 
-# @time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
-# display(p)  # 0.005
+@time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
+display(p)  # 0.005
 #
 # @time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne), (μ, θ))
 # display(p)

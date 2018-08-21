@@ -70,16 +70,16 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
     Z = zeros(S)
-	phi0 = zeros(N, C+1)
-	phi  = @view phi0[:,2:end]
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
     pnc = zeros(N, C)
-	pn1 = @view pnc[:,1]
+    pn1 = @view pnc[:,1]
     u = zeros(N)
     W = zeros(N)
     losses = zeros(N)
 
     Φ = Normal()
-	normcdf(x) = cdf(Φ, x)
+    normcdf(x) = cdf(Φ, x)
     Zdist = MvNormal(S, 1)
 
     estimates = BitArray{1}()
@@ -102,8 +102,8 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
 end
 
 
-" Computes Ψ = Σ_n ln( pn1z ⋅ e^{θ⋅w_n} ) "
-Ψ(θ, p, w) = sum(@. log(p*e^(θ*w)))
+" Computes Ψ = Σ_n ln( Σ_c p⋅e^{θ⋅w_n} ) "
+Ψ(θ, p, w) = sum(log.(sum(@. p*e^(θ*w); dims=2)))
 
 " Minimizatinon objective function for inner level twisting "
 innerlevel_objective(p, θ, w, l) = Ψ(θ, p, w) - θ*l
@@ -122,7 +122,7 @@ end
 function twisted_bernoulli!(q, θ, p, w)
     twist = @. p*e^(θ*w)
     mgf = sum(twist; dims=2)
-    return twist  ./ mgf
+    @. q = twist / mgf
 end
 
 """
@@ -139,11 +139,11 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
 
     μ = zeros(S)
     Z = zeros(S)
-	phi0 = zeros(N, C+1)
-	phi  = @view phi0[:,2:end]
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
     pnc = zeros(N, C)
     qnc = zeros(N, C)
-	qn1 = @view qnc[:,1]
+    qn1 = @view qnc[:,1]
     u = zeros(N)
     W = zeros(N)
     losses = zeros(N)
@@ -151,7 +151,8 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     Φ = Normal()
 	normcdf(x) = cdf(Φ, x)
 
-    estimates = BitArray{1}()
+    estimate = 0
+    estimates = zeros(ne)
     for i = 1:nz
         outerlevel_twisting!(μ)
         rand!(MvNormal(μ, 1), Z)
@@ -162,13 +163,17 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             twisted_bernoulli!(qnc, θ, pnc, weights)
             rand!(u)
             @. W = (qn1 >= u)
-            @. losses = weights[:,1] * W
-            push!(estimates, (sum(losses) >= l))
+            L = sum(weights[:,1] .* W)
+            lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
+            estimates[j] = (L >= l)*lr
             if io != nothing && (i*ne + j) % 500 == 0
-                println(io, string(mean(estimates)))
+                prop = j/((i-1)*ne+j)
+                est = (1-prop)*estimates + (prop)*mean(estimates[1:j])
+                println(io, string(est))
                 flush(io)
             end
         end
+        estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
-    return mean(estimates)
+    return estimate
 end

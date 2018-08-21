@@ -20,13 +20,20 @@ n = 2500
 c = 4
 s = 5
 l = 0.2
-nz = 200
-ne = 200
+nz = 1000
+ne = 1000
 
-Profile.clear()
-Profile.init(n=10^8, delay=0.01)
-Juno.@profiler bernoulli_mc(Parameter(n,c,s,l), (nz, ne))
-Juno.profiletree()
-Juno.profiler()
+# @time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
+# display(p)  # 0.005
+
+@time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne))
+display(p)
+
+
+# Profile.clear()
+# Profile.init(n=10^8, delay=0.01)
+# Juno.@profiler glassermanli_mc(Parameter(n,c,s,l), (nz, ne))
+# Juno.profiletree()
+# Juno.profiler()
 
 end

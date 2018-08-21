@@ -36,7 +36,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
             rand!(Edist, E)
             @. Y = $(β*Z) + denom*E
             @. ind = Y <= H[:,1]
-            @. losses = weights[:,1] .* ind
+            @. losses = weights[:,1] * ind
             push!(estimates, (sum(losses) >= l))
             if io != nothing && (i*ne + j) % 500 == 0
                 println(io, string(mean(estimates)))

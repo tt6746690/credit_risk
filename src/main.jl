@@ -20,12 +20,8 @@ n = 2500
 c = 4
 s = 5
 l = 0.5
-nz = 200
-ne = 200
-
-θ = 2
-μ = Vector(1:s)
-
+nz = 1000
+ne = 1000
 
 # nrep = 10
 # ls = range(0; stop=0.2, length=11)
@@ -40,12 +36,5 @@ display(p)  # 0.005
 #
 # @time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne), (μ, θ))
 # display(p)
-
-
-# Profile.clear()
-# Profile.init(n=10^8, delay=0.01)
-# Juno.@profiler glassermanli_mc(Parameter(n,c,s,l), (nz, ne))
-# Juno.profiletree()
-# Juno.profiler()
 
 end

@@ -5,3 +5,10 @@
 *.synctex.gz
 
 .ipynb_checkpoints/
+
+# profiling
+*.cov
+*.mem
+
+# vim 
+*.swp

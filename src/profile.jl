@@ -1,2 +1,6 @@
+using Coverage
 
-include("CreditRisk.jl")
+infos = analyze_malloc("src")
+for info in infos
+    println(info)
+end

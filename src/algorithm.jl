@@ -7,6 +7,17 @@ import Statistics: mean
 include("utils.jl")
 include("parameter.jl")
 
+
+function record_current(io, i, j, estimate, estimates)
+    if io != nothing
+        prop = j/((i-1)*ne+j)
+        est = (1-prop)*estimates + (prop)*mean(estimates[1:j])
+        println(io, string(mean(est)))
+        flush(io)
+    end
+end
+
+
 """
     simple_mc(parameter::Parameter, sample_size::Tuple{Number, Number})
 
@@ -29,7 +40,8 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
     Zdist = MvNormal(S, 1)
     Edist = MvNormal(N, 1)
 
-    estimates = BitArray{1}()
+    estimate = 0
+    estimates = zeros(Int8, ne)
     for i = 1:nz
         rand!(Zdist, Z)
         for j = 1:ne
@@ -37,12 +49,11 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
             @. Y = $(β*Z) + denom*E
             @. ind = Y <= H[:,1]
             @. losses = weights[:,1] * ind
-            push!(estimates, (sum(losses) >= l))
-            if io != nothing && (i*ne + j) % 500 == 0
-                println(io, string(mean(estimates)))
-                flush(io)
-            end
+            estimates[j] = (sum(losses) >= l)
+            (i*ne + j) % 500 == 0 &&
+                record_current(io, i, j, estimate, estimates)
         end
+        estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
     return mean(estimates)
 end
@@ -82,7 +93,8 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     normcdf(x) = cdf(Φ, x)
     Zdist = MvNormal(S, 1)
 
-    estimates = BitArray{1}()
+    estimate = 0
+    estimates = zeros(Int8, ne)
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
@@ -91,15 +103,15 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
             rand!(u)
             @. W = (pn1 >= u)
             @. losses = weights[:,1] * W
-            push!(estimates, (sum(losses) >= l))
-            if io != nothing && (i*ne + j) % 500 == 0
-                println(io, string(mean(estimates)))
-                flush(io)
-            end
+            estimates[j] = (sum(losses) >= l)
+            (i*ne + j) % 500 == 0 &&
+                record_current(io, i, j, estimate, estimates)
         end
+        estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
     return mean(estimates)
 end
+
 
 
 " Computes Ψ = Σ_n ln( Σ_c p⋅e^{θ⋅w_n} ) "
@@ -157,7 +169,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
 	normcdf(x) = cdf(Φ, x)
 
     estimate = 0
-    estimates = zeros(ne)
+    estimates = zeros(Int8, ne)
     for i = 1:nz
         if μ_ == nothing
             outerlevel_twisting!(μ)
@@ -179,12 +191,8 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             L = sum(weights[:,1] .* W)
             lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
             estimates[j] = (L >= l)*lr
-            if io != nothing && (i*ne + j) % 500 == 0
-                prop = j/((i-1)*ne+j)
-                est = (1-prop)*estimates + (prop)*mean(estimates[1:j])
-                println(io, string(est))
-                flush(io)
-            end
+            (i*ne + j) % 500 == 0 &&
+                record_current(io, i, j, estimate, estimates)
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end

@@ -6,6 +6,9 @@
 + [julia doc](https://docs.julialang.org/en/latest/)
 + [distribution](https://juliastats.github.io/Distributions.jl/)
   + [multivariate](https://juliastats.github.io/Distributions.jl/latest/multivariate.html)
++ plotting
+  + [pyplot](https://matplotlib.org/api/pyplot_api.html)
+    + [mplot3d](https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html)
 
 #### Starter
 

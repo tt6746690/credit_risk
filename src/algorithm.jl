@@ -127,7 +127,9 @@ end
 " Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
 function innerlevel_twisting(p, w, l)
 	if sum(w .* p) > l
-        return 1
+        x = -5:0.5:5
+        y = [innerlevel_objective(θ, p, w, l) for θ in x]
+        plot(x, y, linewidth=2, antialiased=false)
     else
         return 0
     end

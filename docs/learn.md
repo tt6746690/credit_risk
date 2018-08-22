@@ -10,6 +10,45 @@
   + [pyplot](https://matplotlib.org/api/pyplot_api.html)
     + [mplot3d](https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html)
 
+#### JuMP
+
+
+```julia
+using JuMP
+using Clp
+
+m = Model(solver = ClpSolver())
+@variable(m, 0 <= x <= 2 )
+@variable(m, 0 <= y <= 30 )
+
+@objective(m, Max, 5x + 3*y )
+@constraint(m, 1x + 5y <= 3.0 )
+
+print(m)
+
+status = solve(m)
+
+println("Objective value: ", getobjectivevalue(m))
+println("x = ", getvalue(x))
+println("y = ", getvalue(y))
+```
+
+```julia
+using JuMP
+using Clp
+
+m = Model(solver = ClpSolver())
+@variable(m, θ >= 0)
+# @objective(m, Min, Ψ(θ, p, w) - θ*l)
+@objective(m, Min, e^θ)
+
+
+print(m)
+
+```
+
+
+
 #### Starter
 
 ```julia

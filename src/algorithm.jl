@@ -1,3 +1,5 @@
+import Optim
+import Optim: optimize, ConjugateGradient
 
 import Base.MathConstants: e
 import Random: rand!
@@ -112,24 +114,28 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     return mean(estimates)
 end
 
+ # optimize((θ) -> let θ = θ[1]; innerlevel_objective(θ, p, w, l) end, [0.0], LBFGS())
 
+function outerlevel_twisting!(μ)
+    fill!(μ, 0)
+end
 
 " Computes Ψ = Σ_n ln( Σ_c p⋅e^{θ⋅w_n} ) "
-Ψ(θ, p, w) = sum(log.(sum(@. p*e^(θ*w); dims=2)))
+Ψ(θ, p, w) = sum(log.(sum(@. p*ℯ^(θ*w); dims=2)))
 
 " Minimizatinon objective function for inner level twisting "
 innerlevel_objective(θ, p, w, l) = Ψ(θ, p, w) - θ*l
 
-function outerlevel_twisting!(μ)
-	fill!(μ, 0)
+" Wraps objective function for input into Optim.optimize() "
+innerlevel_objective_wrapped(θ, p, w, l) = let θ = θ[1]
+    innerlevel_objective(θ, p, w, l)
 end
 
 " Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
-function innerlevel_twisting(p, w, l)
-	if sum(w .* p) > l
-        x = -5:0.5:5
-        y = [innerlevel_objective(θ, p, w, l) for θ in x]
-        plot(x, y, linewidth=2, antialiased=false)
+function innerlevel_twisting(p, w, l, initialguess::Float64=0.0)
+    if sum(w .* p) > l
+        results = optimize(innerlevel_objective_wrapped, [initialguess], ConjugateGradient())
+        return Optim.minimum(results)
     else
         return 0
     end
@@ -184,6 +190,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
         for j = 1:ne
             if θ_ == nothing
                 θ = innerlevel_twisting(pnc, weights, l)
+                display(θ)
             else
                 θ = θ_
             end

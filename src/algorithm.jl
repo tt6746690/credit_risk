@@ -19,7 +19,6 @@ function record_current(io, i, j, estimate, estimates)
     end
 end
 
-
 """
     simple_mc(parameter::Parameter, sample_size::Tuple{Number, Number})
 
@@ -114,7 +113,6 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     return mean(estimates)
 end
 
-
 function outerlevel_twisting!(μ)
     fill!(μ, 0)
 end
@@ -122,31 +120,21 @@ end
 " Computes Ψ = Σ_n ln( Σ_c p⋅e^{θ⋅w_n} ) "
 Ψ(θ, p, w) = sum(log.(sum(@. p*ℯ^(θ*w); dims=2)))
 
-" Minimizatinon objective function for inner level twisting "
-innerlevel_objective(θ, p, w, l) = Ψ(θ, p, w) - θ*l
-
-" Wraps objective function for input into Optim.optimize() "
-innerlevel_objective_wrapped(θ, p, w, l) = let θ = θ[1]
-    innerlevel_objective(θ, p, w, l)
-end
-
-" Computes θ = argmin_θ { -θl + Ψ(θ, Z) } "
+" Computes inner level twisting parameter θ = argmin_θ { -θl + Ψ(θ, Z) } "
 function innerlevel_twisting(p, w, l, initialguess::Float64=0.0)
+    " Wraps objective function for input into Optim.optimize() "
     if sum(w .* p) > l
-        results = optimize(innerlevel_objective_wrapped, [initialguess], ConjugateGradient())
-        return Optim.minimum(results)
+        inner_objective(θ) = let θ = θ[1]
+            Ψ(θ, p, w) - θ*l
+        end
+        results = optimize(inner_objective, [initialguess], ConjugateGradient())
+        minimizer = Optim.converged(results) ? Optim.minimizer(results)[1] : 0
+        return minimizer
     else
         return 0
     end
 end
 
-" Given twisting parameter θ, compute twisted bernoulli probability q from p
-    q = p * e^{θ⋅w} / Σ_c p * e^{θ⋅w} "
-function twisted_bernoulli!(q, θ, p, w)
-    twist = @. p*e^(θ*w)
-    mgf = sum(twist; dims=2)
-    @. q = twist / mgf
-end
 
 """
     glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
@@ -159,12 +147,14 @@ end
 function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing), io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
-    (μ_, θ_) = extra_params
+    (mu, theta) = extra_params
 
     μ = zeros(S)
     Z = zeros(S)
     phi0 = zeros(N, C+1)
     phi  = @view phi0[:,2:end]
+    twist = zeros(N, C)
+    mgf = zeros(N)
     pnc = zeros(N, C)
     qnc = zeros(N, C)
     qn1 = @view qnc[:,1]
@@ -175,25 +165,27 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     Φ = Normal()
 	normcdf(x) = cdf(Φ, x)
 
+    if mu == nothing
+        outerlevel_twisting!(μ)
+    else
+        μ = mu
+    end
+    Zdist = MvNormal(μ, 1)
+
     estimate = 0
-    estimates = zeros(Int8, ne)
+    estimates = zeros(ne)
     for i = 1:nz
-        if μ_ == nothing
-            outerlevel_twisting!(μ)
-        else
-            μ = μ_
-        end
-        rand!(MvNormal(μ, 1), Z)
+        rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
         diff!(pnc, phi0; dims=2)
+        # Twist bernoulli distribution pnc → qnc
+        θ = (theta == nothing) ?
+            innerlevel_twisting(pnc, weights, l) : theta
+        @. twist = pnc*ℯ^(θ*weights)
+        sum!(mgf, twist)
+        @. qnc = twist / mgf
         for j = 1:ne
-            if θ_ == nothing
-                θ = innerlevel_twisting(pnc, weights, l)
-                display(θ)
-            else
-                θ = θ_
-            end
-            twisted_bernoulli!(qnc, θ, pnc, weights)
+            # Sample weights from bernoulli distribution
             rand!(u)
             @. W = (qn1 >= u)
             L = sum(weights[:,1] .* W)

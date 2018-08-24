@@ -21,8 +21,8 @@ n = 2500
 c = 4
 s = 5
 l = 0.5
-nz = 200
-ne = 200
+nz = 1000
+ne = 1000
 param = Parameter(n,c,s,l)
 
 # nrep = 10

@@ -7,9 +7,9 @@ REMOTE = wpq@comps0.cs.toronto.edu
 synccode:
 	$(RSYNC) $(RSYNCTAGS) $(SRC_FOLDER) $(REMOTE):/u/wpq/github/credit_risk
 
-data = /h/96/wpq/github/credit_risk/bernoulli_vs_glassermanli.txt
+data = /h/96/wpq/github/credit_risk/*.txt
 syncdata:
-	$(RSYNC) $(RSYNCTAGS) $(REMOTE):$(data) $(SRC_FOLDER)/b_vs_gl.txt
+	$(RSYNC) $(RSYNCTAGS) $(REMOTE):$(data) $(SRC_FOLDER)/
 
 synccoderev:
 	$(RSYNC) $(RSYNCTAGS) $(REMOTE):/u/wpq/github/credit_risk/ $(HOME)/github/credit_risk

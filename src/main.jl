@@ -9,18 +9,14 @@ import Profile
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
 
+using Main.CreditRisk
 
-import Main.CreditRisk: Parameter
-import Main.CreditRisk: simple_mc, bernoulli_mc, glassermanli_mc
-import Main.CreditRisk: get_estimates!
-import Main.CreditRisk: make_replications, plot_replications, make_replications_b
-
-seed!(0)
+# seed!(0)
 
 n = 2500
 c = 4
 s = 5
-l = 0.5
+l = 0.2
 nz = 1000
 ne = 1000
 param = Parameter(n,c,s,l)
@@ -35,7 +31,7 @@ param = Parameter(n,c,s,l)
 
 # @time p = bernoulli_mc(Parameter(n,c,s,l), (nz,ne))
 # display(p)  # 0.005
-#
+# #
 @time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne))
 display(p)
 

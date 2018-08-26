@@ -1,6 +1,7 @@
 import Optim
 import Optim: optimize, ConjugateGradient
 
+import LinearAlgebra: mul!, ⋅, dot
 import Base.MathConstants: e
 import Random: rand!
 import Distributions: cdf, Normal, MvNormal
@@ -36,6 +37,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
     E = zeros(N)
     Y = zeros(N)
     ind = zeros(N)
+    w1 = @view weights[:,1]
     losses = zeros(N)
 
     Zdist = MvNormal(S, 1)
@@ -49,7 +51,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
             rand!(Edist, E)
             @. Y = $(β*Z) + denom*E
             @. ind = Y <= H[:,1]
-            @. losses = weights[:,1] * ind
+            @. losses = w1 * ind
             estimates[j] = (sum(losses) >= l)
             (i*ne + j) % 500 == 0 &&
                 record_current(io, i, j, estimate, estimates)
@@ -88,6 +90,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     pn1 = @view pnc[:,1]
     u = zeros(N)
     W = zeros(N)
+    w1 = @view weights[:,1]
     losses = zeros(N)
 
     Φ = Normal()
@@ -95,7 +98,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     Zdist = MvNormal(S, 1)
 
     estimate = 0
-    estimates = zeros(Int8, ne)
+    estimates = zeros(ne)
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
@@ -103,35 +106,73 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
         for j = 1:ne
             rand!(u)
             @. W = (pn1 >= u)
-            @. losses = weights[:,1] * W
+            @. losses = w1 * W
             estimates[j] = (sum(losses) >= l)
             (i*ne + j) % 500 == 0 &&
                 record_current(io, i, j, estimate, estimates)
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
-    return mean(estimates)
+    return estimate
 end
 
 function outerlevel_twisting!(μ)
     fill!(μ, 0)
 end
 
-" Computes Ψ = Σ_n ln( Σ_c p⋅e^{θ⋅w_n} ) "
-Ψ(θ, p, w) = sum(log.(sum(@. p*ℯ^(θ*w); dims=2)))
+
+function init_Ψ()
+    x = nothing
+    y = nothing
+    " Computes Ψ = Σ_n ln( y ) where x = Σ_c p⋅e^{θ⋅w_n}"
+    function Ψ(θ, p, w)
+        if x == nothing && y == nothing
+            x = similar(p)
+            y = similar(p, axes(p, 1))
+        end
+        @. x = p*ℯ^(θ*w)
+        sum!(y, x)
+        mapreduce(log, +, y; init=0)
+    end
+    return Ψ
+end
+
+struct InnerLevelTwisting
+    N::Int64
+    C::Int64
+    # computed
+    wp::Array{Float64, 2}
+    # optimization
+    # Result of twist, wrapped into an array
+    θ::Array{Float64, 1}
+    Ψ::Any
+    initialguess::Array{Float64, 1}
+
+    function InnerLevelTwisting(N, C)
+        wp = zeros(N, C)
+        θ = [0]
+        Ψ = init_Ψ()
+        initialguess = [0]
+        new(N, C, wp, θ, Ψ, initialguess)
+    end
+end
+
+get_result(x::InnerLevelTwisting) = x.θ[1]
+set_result!(x::InnerLevelTwisting, θ) = (x.θ[1] = θ)
 
 " Computes inner level twisting parameter θ = argmin_θ { -θl + Ψ(θ, Z) } "
-function innerlevel_twisting(p, w, l, initialguess::Float64=0.0)
-    " Wraps objective function for input into Optim.optimize() "
-    if sum(w .* p) > l
-        inner_objective(θ) = let θ = θ[1]
-            Ψ(θ, p, w) - θ*l
+function twist!(x::InnerLevelTwisting, p, w, l)
+    @. x.wp = w * p
+    if sum(x.wp) > l
+        objective(θ) = let θ = θ[1]
+            x.Ψ(θ, p, w) - θ*l
         end
-        results = optimize(inner_objective, [initialguess], ConjugateGradient())
-        minimizer = Optim.converged(results) ? Optim.minimizer(results)[1] : 0
-        return minimizer
+        results = optimize(objective, x.initialguess, ConjugateGradient())
+        minimizer = Optim.converged(results) ? Optim.minimizer(results) : 0
+        x.initialguess[:] = minimizer
+        set_result!(x, minimizer[1])
     else
-        return 0
+        set_result!(x, 0)
     end
 end
 
@@ -155,15 +196,19 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     phi  = @view phi0[:,2:end]
     twist = zeros(N, C)
     mgf = zeros(N)
+    wp = zeros(N, C)
     pnc = zeros(N, C)
     qnc = zeros(N, C)
     qn1 = @view qnc[:,1]
     u = zeros(N)
     W = zeros(N)
+    w1 = @view weights[:,1]
     losses = zeros(N)
 
-    Φ = Normal()
-	normcdf(x) = cdf(Φ, x)
+    # inner_initialguess::Float64 = 0
+    innerlevel = InnerLevelTwisting(N, C)
+    normcdf(x) = cdf(Normal(), x)
+    Ψ = init_Ψ()
 
     if mu == nothing
         outerlevel_twisting!(μ)
@@ -179,16 +224,21 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
         @. phi = normcdf((H - $(β*Z)) / denom)
         diff!(pnc, phi0; dims=2)
         # Twist bernoulli distribution pnc → qnc
-        θ = (theta == nothing) ?
-            innerlevel_twisting(pnc, weights, l) : theta
+        if theta == nothing
+            twist!(innerlevel, pnc, weights, l)
+            θ = get_result(innerlevel)
+        else
+            θ = theta
+        end
         @. twist = pnc*ℯ^(θ*weights)
         sum!(mgf, twist)
         @. qnc = twist / mgf
+
         for j = 1:ne
             # Sample weights from bernoulli distribution
             rand!(u)
             @. W = (qn1 >= u)
-            L = sum(weights[:,1] .* W)
+            L = w1 ⋅ W
             lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
             estimates[j] = (L >= l)*lr
             (i*ne + j) % 500 == 0 &&

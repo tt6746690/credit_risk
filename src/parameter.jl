@@ -72,8 +72,8 @@ function Parameter(N, C, S, l)
     β = rand(N, S)
     # 1/sqrt(S) * Unif(-1,1)
     β = @. (2β-1)/sqrt(S)
-    # Unif(0, 1/sqrt(S))
-    # β = fill(1/sqrt(S), N, S)
+    # β = fill(1/sqrt(S), N, S)   # No idiosyncratic risk factor
+    # β = zeros(N, S)             # No systematic risk factor
 
     # H[n, c] = inverse_unit_Gaussian(∑ᵧ cmm[c(n), γ])
     cum_cmm = cumsum(cmm, dims=2)
@@ -84,8 +84,8 @@ function Parameter(N, C, S, l)
     denom = reshape(denom, :)
     weights = ead ./ sum(ead)
     weights = weights .* lgc
-    # Idea is the larger weights, the larger increase in default probability
-    # during the inner level twisting pnc → qnc
+    # Idea is the larger weights/exposure, there is a larger increase in
+    # default probability during the inner level twisting pnc → qnc
 
     return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
 end

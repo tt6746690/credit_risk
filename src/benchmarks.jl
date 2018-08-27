@@ -68,7 +68,7 @@ function innerlevel_objective()
     mgf = zeros(N)
     qnc = zeros(N, C)
 
-    for i in 1:1
+    for i in 1:3
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
         diff!(pnc, phi0; dims=2)
@@ -77,10 +77,7 @@ function innerlevel_objective()
 
         function objective(θ)
             θ = θ[1]
-            a = Ψ(θ, pnc, weights) - θ*l
-            # b = sum(log.(sum(@. pnc*ℯ^(θ*weights); dims=2)))
-            # @assert a == b
-            return a
+            Ψ(θ, pnc, weights) - θ*l
         end
 
         # plot
@@ -101,18 +98,6 @@ function innerlevel_objective()
             θ = 0
         end
 
-        # θ = 300
-
-        # twisted distribution
-        # @. twist = pnc*ℯ^(θ*weights)
-        # display(twist[1:20,1:2])
-        # sum!(mgf, twist)
-        # display(mgf[1:20])
-        # @. qnc = twist / mgf
-        #
-        #
-        # println("qnc")
-        # display(qnc[1:20,1:2])
     end
 end
 

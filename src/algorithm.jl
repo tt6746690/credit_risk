@@ -167,7 +167,7 @@ set_result!(t::InnerLevelTwisting, θ) = (t.θ[1] = θ)
 " Computes inner level twisting parameter θ = argmin_θ { -θl + Ψ(θ, Z) } "
 function twist!(t::InnerLevelTwisting, p, w, l)
     @. t.wp = w * p
-    if sum(t.wp) > l
+    if l > sum(t.wp)
         function objective(θ)
             θ = θ[1]
             t.Ψ(θ, p, w) - θ*l

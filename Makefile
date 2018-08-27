@@ -18,4 +18,5 @@ avoidpasswordduringssh:
 	$(RSYNC) $(RSYNCTAGS) ~/.ssh/id_rsa.pub $(REMOTE):/u/wpq/.ssh
 
 clean:
-	rm src/*.mem
+	rm src/*.mem ||:
+	rm *.pdf     ||:

@@ -270,9 +270,9 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[MathProgBase]]
 deps = ["Compat"]
-git-tree-sha1 = "a3df6da48fcbdb56d7571b0c6f950b02dcea1754"
+git-tree-sha1 = "eb149595c386fcd68f51904ed2cdec6512bc4e46"
 uuid = "fdba3010-5040-5b88-9595-932c9decdf73"
-version = "0.7.2"
+version = "0.7.3"
 
 [[MbedTLS]]
 deps = ["BinaryProvider", "Compat", "Libdl", "Pkg", "Sockets"]
@@ -374,10 +374,10 @@ uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 version = "1.18.2"
 
 [[PyPlot]]
-deps = ["Colors", "Compat", "LaTeXStrings", "PyCall", "Test", "VersionParsing"]
-git-tree-sha1 = "3a0908224526b378cb0eb1b770385e23b70adb5c"
+deps = ["Base64", "Colors", "Compat", "LaTeXStrings", "PyCall", "VersionParsing"]
+git-tree-sha1 = "1cc673ec375f6fa0e3652e23ba435195f8175387"
 uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
-version = "2.6.0"
+version = "2.6.1"
 
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra", "Test"]

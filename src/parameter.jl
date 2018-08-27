@@ -69,9 +69,11 @@ function Parameter(N, C, S, l)
     lgc[:,1] = @. floor(5(1:N)/N)^2
     cn = fill(2, N)
 
-    # 1/sqrt(S) * Unif(-1,1)
     β = rand(N, S)
+    # 1/sqrt(S) * Unif(-1,1)
     β = @. (2β-1)/sqrt(S)
+    # Unif(0, 1/sqrt(S))
+    # β = fill(1/sqrt(S), N, S)
 
     # H[n, c] = inverse_unit_Gaussian(∑ᵧ cmm[c(n), γ])
     cum_cmm = cumsum(cmm, dims=2)
@@ -82,6 +84,8 @@ function Parameter(N, C, S, l)
     denom = reshape(denom, :)
     weights = ead ./ sum(ead)
     weights = weights .* lgc
+    # Idea is the larger weights, the larger increase in default probability
+    # during the inner level twisting pnc → qnc
 
     return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
 end

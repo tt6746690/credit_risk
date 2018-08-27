@@ -58,7 +58,7 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
-    return mean(estimates)
+    return estimate
 end
 
 
@@ -93,8 +93,6 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     w1 = @view weights[:,1]
     losses = zeros(N)
 
-    Φ = Normal()
-    normcdf(x) = cdf(Φ, x)
     Zdist = MvNormal(S, 1)
 
     estimate = 0
@@ -140,39 +138,76 @@ end
 struct InnerLevelTwisting
     N::Int64
     C::Int64
-    # computed
     wp::Array{Float64, 2}
-    # optimization
+    # optimization related
     # Result of twist, wrapped into an array
     θ::Array{Float64, 1}
     Ψ::Any
     initialguess::Array{Float64, 1}
 
-    function InnerLevelTwisting(N, C)
-        wp = zeros(N, C)
-        θ = [0]
-        Ψ = init_Ψ()
-        initialguess = [0]
+    function InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess)
+        @checksize (N, C)   wp
+        @checksize (1,)     θ
+        @checksize (1,)     initialguess
         new(N, C, wp, θ, Ψ, initialguess)
     end
 end
 
-get_result(x::InnerLevelTwisting) = x.θ[1]
-set_result!(x::InnerLevelTwisting, θ) = (x.θ[1] = θ)
+function InnerLevelTwisting(N, C)
+    wp = zeros(N, C)
+    θ = [0]
+    Ψ = init_Ψ()
+    initialguess = [0]
+    InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess)
+end
+
+get_result(t::InnerLevelTwisting) = t.θ[1]
+set_result!(t::InnerLevelTwisting, θ) = (t.θ[1] = θ)
 
 " Computes inner level twisting parameter θ = argmin_θ { -θl + Ψ(θ, Z) } "
-function twist!(x::InnerLevelTwisting, p, w, l)
-    @. x.wp = w * p
-    if sum(x.wp) > l
-        objective(θ) = let θ = θ[1]
-            x.Ψ(θ, p, w) - θ*l
+function twist!(t::InnerLevelTwisting, p, w, l)
+    @. t.wp = w * p
+    if sum(t.wp) > l
+        function objective(θ)
+            θ = θ[1]
+            t.Ψ(θ, p, w) - θ*l
         end
-        results = optimize(objective, x.initialguess, ConjugateGradient())
+        results = optimize(objective, t.initialguess, ConjugateGradient())
         minimizer = Optim.converged(results) ? Optim.minimizer(results) : 0
-        x.initialguess[:] = minimizer
-        set_result!(x, minimizer[1])
+        t.initialguess[:] = minimizer
+        set_result!(t, minimizer[1])
     else
-        set_result!(x, 0)
+        set_result!(t, 0)
+    end
+end
+
+
+struct OuterLevelTwisting end
+
+function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+
+    Ψ = init_Ψ()
+    innerlevel = InnerLevelTwisting(N, C)
+
+    function objective(z)
+        @checksize (S,) z
+        @. phi = normcdf((H - $(β*z)) / denom)
+        diff!(pnc, phi0; dims=2)
+        twist!(innerlevel, pnc, weights, l)
+        θ = get_result(innerlevel)
+        θ*l - Ψ(θ, pnc, weights) + 0.5z'z
+    end
+
+    results = optimize(objective, zeros(S), optimizer)
+    if Optim.converged(results)
+        display("Converged!")
+        return Optim.minimizer(results)
+    else
+        return zeros(S)
     end
 end
 
@@ -194,10 +229,9 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     Z = zeros(S)
     phi0 = zeros(N, C+1)
     phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
     twist = zeros(N, C)
     mgf = zeros(N)
-    wp = zeros(N, C)
-    pnc = zeros(N, C)
     qnc = zeros(N, C)
     qn1 = @view qnc[:,1]
     u = zeros(N)
@@ -205,9 +239,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     w1 = @view weights[:,1]
     losses = zeros(N)
 
-    # inner_initialguess::Float64 = 0
     innerlevel = InnerLevelTwisting(N, C)
-    normcdf(x) = cdf(Normal(), x)
     Ψ = init_Ψ()
 
     if mu == nothing
@@ -229,6 +261,9 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             θ = get_result(innerlevel)
         else
             θ = theta
+        end
+        if θ != 0
+            display(θ)
         end
         @. twist = pnc*ℯ^(θ*weights)
         sum!(mgf, twist)

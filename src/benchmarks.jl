@@ -5,7 +5,8 @@ import BenchmarkTools: @benchmark
 import Optim: optimize
 import Optim: BFGS, LBFGS, ConjugateGradient, GradientDescent
 import Optim: MomentumGradientDescent, AcceleratedGradientDescent
-import PyPlot: plot, surf, savefig
+import PyPlot: surf, savefig
+import Plots: contour
 
 " Inner level optimization on a univariate convex function
     Should almost always reach global min regardless of algorithm used
@@ -83,23 +84,73 @@ function innerlevel_objective()
         # plot
         xs = -100:1000
         ys = [objective([x]) for x in xs]
-        display(Z)
         plot(xs, ys)
         savefig("$i.pdf", format="pdf")
 
         # optimization
-        println("Criteria: $(sum(weights .* pnc) > l)")
         results = optimize(objective, [0.0], method = ConjugateGradient())
-
         if Optim.converged(results)
             θ = Optim.minimizer(results)[1]
             println("theta: $θ")
         else
-            θ = 0
+            println("Did not converge")
         end
-
     end
 end
 
 
-innerlevel_objective()
+" Visualize Outer level's objective function with many iterations of Z sampling
+"
+function outerlevel_objective()
+    n = 2500
+    c = 4
+    s = 2  # binary for easy visualization
+    l = 0.2
+
+    # for l in 0:0.01:0.2
+    for l in [0.2]
+        param = Parameter(n,c,s,l)
+        (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(param)
+
+        phi0 = zeros(N, C+1)
+        phi  = @view phi0[:,2:end]
+        pnc = zeros(N, C)
+
+        Ψ = init_Ψ()
+        innerlevel = InnerLevelTwisting(N, C)
+
+        function objective(z)
+            @. phi = normcdf((H - $(β*z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            twist!(innerlevel, pnc, weights, l)
+            θ = get_result(innerlevel)
+            θ*l - Ψ(θ, pnc, weights) + 0.5z'z
+        end
+
+        xs = -2:0.01:2
+        ys = -2:0.01:2
+        zs = [objective([x, y]) for x in xs, y in ys]
+        display(zs)
+        display(contour(xs, ys, objective))
+
+        # display(surf(zs))
+        # savefig("surf_$l.pdf", format="pdf")
+
+        # methods = [
+        #     BFGS()
+        #     LBFGS()
+        #     ConjugateGradient()  # fasted, least allocation
+        #     GradientDescent()
+        #     MomentumGradientDescent()
+        #     AcceleratedGradientDescent()
+        # ]
+        # for method in methods
+        #     results = optimize(objective, zeros(S), MomentumGradientDescent())
+        #     display(results)
+        # end
+
+        # results = optimize(objective, zeros(S), MomentumGradientDescent())
+        # println("l=$l: minimizer=$(Optim.minimizer(results))")
+        # display(results)
+    end
+end

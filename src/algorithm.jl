@@ -144,12 +144,13 @@ struct InnerLevelTwisting
     θ::Array{Float64, 1}
     Ψ::Any
     initialguess::Array{Float64, 1}
+    n_restarts::Int64
 
-    function InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess)
+    function InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess, n_restarts)
         @checksize (N, C)   wp
         @checksize (1,)     θ
         @checksize (1,)     initialguess
-        new(N, C, wp, θ, Ψ, initialguess)
+        new(N, C, wp, θ, Ψ, initialguess, n_restarts)
     end
 end
 
@@ -158,7 +159,8 @@ function InnerLevelTwisting(N, C)
     θ = [0]
     Ψ = init_Ψ()
     initialguess = [0]
-    InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess)
+    n_restarts = 5
+    InnerLevelTwisting(N, C, wp, θ, Ψ, initialguess, n_restarts)
 end
 
 get_result(t::InnerLevelTwisting) = t.θ[1]
@@ -172,17 +174,58 @@ function twist!(t::InnerLevelTwisting, p, w, l)
             θ = θ[1]
             t.Ψ(θ, p, w) - θ*l
         end
-        results = optimize(objective, t.initialguess, ConjugateGradient())
-        minimizer = Optim.converged(results) ? Optim.minimizer(results) : 0
-        t.initialguess[:] = minimizer
-        set_result!(t, minimizer[1])
+
+        for i = 1:t.n_restarts
+            results = optimize(objective, t.initialguess, ConjugateGradient())
+            if Optim.converged(results)
+                break
+            end
+        end
+
+        if Optim.converged(results)
+            minimizer = Optim.minimizer(results)
+            set_result!(t, minimizer[1])
+            t.initialguess[:] .= minimizer
+        else
+            display("Inner level optimization failed to converged with $n_restarts restarts.")
+            set_result!(t, 0)
+        end
     else
         set_result!(t, 0)
     end
 end
 
 
-struct OuterLevelTwisting end
+struct OuterLevelTwisting
+    N::Int64
+    C::Int64
+    S::Int64
+
+    μ::Array{Float64, 1}
+    innerlevel::InnerLevelTwisting
+    Ψ::Any
+    initialguess::Array{Float64, 1}
+    n_restarts::Int64
+    function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+        @checksize (S,)     μ
+        @checksize (S,)     initialguess
+        new(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    end
+end
+
+function OuterLevelTwisting(N, C, S)
+    μ = zeros(0)
+    innerlevel = InnerLevelTwisting(N, C)
+    Ψ = init_Ψ()
+    initialguess = zeros(S)
+    n_restarts = 5
+    InnerLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+end
+
+
+get_result(t::OuterLevelTwisting) = t.μ
+set_result!(t::OuterLevelTwisting, μ) = (t.μ[:] = μ)
+
 
 function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
@@ -190,24 +233,30 @@ function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
     phi  = @view phi0[:,2:end]
     pnc = zeros(N, C)
 
-    Ψ = init_Ψ()
-    innerlevel = InnerLevelTwisting(N, C)
-
     function objective(z)
         @checksize (S,) z
         @. phi = normcdf((H - $(β*z)) / denom)
         diff!(pnc, phi0; dims=2)
-        twist!(innerlevel, pnc, weights, l)
-        θ = get_result(innerlevel)
-        θ*l - Ψ(θ, pnc, weights) + 0.5z'z
+        twist!(t.innerlevel, pnc, weights, l)
+        θ = get_result(t.innerlevel)
+        θ*l - t.Ψ(θ, pnc, weights) + 0.5z'z
     end
 
-    results = optimize(objective, zeros(S), optimizer)
+
+    for i = 1:t.n_restarts
+        results = optimize(objective, t.initialguess, optimizer)
+        if Optim.converged(results)
+            break
+        end
+    end
+
     if Optim.converged(results)
-        display("Converged!")
-        return Optim.minimizer(results)
+        minimizer = Optim.minimizer(results)
+        set_result!(t, minimizer)
+        t.initialguess[:] .= minimizer
     else
-        return zeros(S)
+        display("Outer level optimization failed to converged with $n_restarts restarts.")
+        set_result!(t, zeros(S))
     end
 end
 

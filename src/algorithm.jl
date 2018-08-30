@@ -1,5 +1,5 @@
 import Optim
-import Optim: optimize, ConjugateGradient
+import Optim: optimize, ConjugateGradient, BFGS
 
 import LinearAlgebra: mul!, ⋅, dot
 import Base.MathConstants: e
@@ -139,8 +139,6 @@ struct InnerLevelTwisting
     N::Int64
     C::Int64
     wp::Array{Float64, 2}
-    # optimization related
-    # Result of twist, wrapped into an array
     θ::Array{Float64, 1}
     Ψ::Any
     initialguess::Array{Float64, 1}
@@ -174,22 +172,20 @@ function twist!(t::InnerLevelTwisting, p, w, l)
             θ = θ[1]
             t.Ψ(θ, p, w) - θ*l
         end
-
+        optimizer = ConjugateGradient()
         for i = 1:t.n_restarts
-            results = optimize(objective, t.initialguess, ConjugateGradient())
+            results = optimize(objective, t.initialguess, optimizer)
             if Optim.converged(results)
-                break
+                minimizer = Optim.minimizer(results)
+                set_result!(t, minimizer[1])
+                t.initialguess[:] .= minimizer
+                return
             end
+            optimizer = BFGS()
         end
 
-        if Optim.converged(results)
-            minimizer = Optim.minimizer(results)
-            set_result!(t, minimizer[1])
-            t.initialguess[:] .= minimizer
-        else
-            display("Inner level optimization failed to converged with $n_restarts restarts.")
-            set_result!(t, 0)
-        end
+        display("Inner level optimization failed to converged with $(t.n_restarts) restarts.")
+        set_result!(t, 0)
     else
         set_result!(t, 0)
     end
@@ -200,12 +196,12 @@ struct OuterLevelTwisting
     N::Int64
     C::Int64
     S::Int64
-
     μ::Array{Float64, 1}
     innerlevel::InnerLevelTwisting
     Ψ::Any
     initialguess::Array{Float64, 1}
     n_restarts::Int64
+
     function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
         @checksize (S,)     μ
         @checksize (S,)     initialguess
@@ -246,18 +242,15 @@ function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
     for i = 1:t.n_restarts
         results = optimize(objective, t.initialguess, optimizer)
         if Optim.converged(results)
-            break
+            minimizer = Optim.minimizer(results)
+            set_result!(t, minimizer)
+            t.initialguess[:] .= minimizer
+            return
         end
     end
 
-    if Optim.converged(results)
-        minimizer = Optim.minimizer(results)
-        set_result!(t, minimizer)
-        t.initialguess[:] .= minimizer
-    else
-        display("Outer level optimization failed to converged with $n_restarts restarts.")
-        set_result!(t, zeros(S))
-    end
+    display("Outer level optimization failed to converged with $(t.n_restarts) restarts.")
+    set_result!(t, zeros(S))
 end
 
 

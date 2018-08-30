@@ -130,27 +130,13 @@ function outerlevel_objective()
         xs = -2:0.01:2
         ys = -2:0.01:2
         zs = [objective([x, y]) for x in xs, y in ys]
-        display(zs)
-        display(contour(xs, ys, objective))
+
+        obj_wrapped(x, y) = objective([x, y])
+        contour(xs, ys, obj_wrapped)
+        savefig("contour_$l.pdf", format="pdf")
 
         # display(surf(zs))
         # savefig("surf_$l.pdf", format="pdf")
 
-        # methods = [
-        #     BFGS()
-        #     LBFGS()
-        #     ConjugateGradient()  # fasted, least allocation
-        #     GradientDescent()
-        #     MomentumGradientDescent()
-        #     AcceleratedGradientDescent()
-        # ]
-        # for method in methods
-        #     results = optimize(objective, zeros(S), MomentumGradientDescent())
-        #     display(results)
-        # end
-
-        # results = optimize(objective, zeros(S), MomentumGradientDescent())
-        # println("l=$l: minimizer=$(Optim.minimizer(results))")
-        # display(results)
     end
 end

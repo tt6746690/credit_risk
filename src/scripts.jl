@@ -31,15 +31,18 @@ function make_replications((ls, nrep), filename::String)
     ne = 1000
 
     open(filename, "w") do io
-        println(io, "l,glassermanli,mu,theta")
+        println(io, "l,glassermanli,mu")
         for l = ls
             for rep in 1:nrep
-                for μ in range(0; stop=2, length=2)
-                    θ = 0
-                    @time p2 = glassermanli_mc(Parameter(n,c,s,l), (nz, ne), (fill(μ, s), θ))
-                    println(io, string(l) * "," * string(p2) * "," * string(μ) * "," * string(θ))
-                    flush(io)
-                end
+
+                parameter = Parameter(n,c,s,l)
+                outerlevel = OuterLevelTwisting(n, c, s)
+                twist!(outerlevel, parameter)
+                μ = get_result(outerlevel)
+
+                @time p = glassermanli_mc(parameter, (nz, ne), (μ, nothing))
+                println(io, string(l) * "," * string(p) * "," * string(μ))
+                flush(io)
             end
         end
     end

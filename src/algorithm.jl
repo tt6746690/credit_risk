@@ -1,5 +1,7 @@
 import Optim
-import Optim: optimize, ConjugateGradient, BFGS
+import Optim: optimize
+import Optim: BFGS, LBFGS, ConjugateGradient, GradientDescent
+import Optim: MomentumGradientDescent, AcceleratedGradientDescent
 
 import LinearAlgebra: mul!, ⋅, dot
 import Base.MathConstants: e
@@ -210,12 +212,12 @@ struct OuterLevelTwisting
 end
 
 function OuterLevelTwisting(N, C, S)
-    μ = zeros(0)
+    μ = zeros(S)
     innerlevel = InnerLevelTwisting(N, C)
     Ψ = init_Ψ()
     initialguess = zeros(S)
-    n_restarts = 5
-    InnerLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    n_restarts = 20
+    OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
 end
 
 
@@ -223,7 +225,7 @@ get_result(t::OuterLevelTwisting) = t.μ
 set_result!(t::OuterLevelTwisting, μ) = (t.μ[:] = μ)
 
 
-function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
+function twist!(t::OuterLevelTwisting, parameter::Parameter)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
     phi0 = zeros(N, C+1)
     phi  = @view phi0[:,2:end]
@@ -238,11 +240,20 @@ function twist!(t::OuterLevelTwisting, parameter::Parameter, optimizer)
         θ*l - t.Ψ(θ, pnc, weights) + 0.5z'z
     end
 
-
+    optimizers = Dict(
+        "BFGS" => BFGS(),
+        "LBFGS" => LBFGS(),
+        "MomentumGradientDescent" => MomentumGradientDescent()
+    )
     for i = 1:t.n_restarts
+        op = rand(optimizers)
+        optimizer = op[2]
+        println("Start $i optimization with $(op[1])")
+
         results = optimize(objective, t.initialguess, optimizer)
         if Optim.converged(results)
             minimizer = Optim.minimizer(results)
+            println("mu: $minimizer; f(mu): $(objective(minimizer))")
             set_result!(t, minimizer)
             t.initialguess[:] .= minimizer
             return
@@ -281,11 +292,13 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     w1 = @view weights[:,1]
     losses = zeros(N)
 
+    outerlevel = OuterLevelTwisting(N, C, S)
     innerlevel = InnerLevelTwisting(N, C)
     Ψ = init_Ψ()
 
     if mu == nothing
-        outerlevel_twisting!(μ)
+        twist!(outerlevel, parameter)
+        μ = get_result(outerlevel)
     else
         μ = mu
     end
@@ -303,9 +316,6 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             θ = get_result(innerlevel)
         else
             θ = theta
-        end
-        if θ != 0
-            display(θ)
         end
         @. twist = pnc*ℯ^(θ*weights)
         sum!(mgf, twist)

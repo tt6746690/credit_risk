@@ -11,6 +11,6 @@ export Parameter, unpack
 export InnerLevelTwisting, OuterLevelTwisting, twist!, init_Ψ, get_result, set_result!
 export simple_mc, bernoulli_mc, glassermanli_mc
 export make_replications, plot_replications, make_replications_b
-export innerlevel_optimizer, innerlevel_objective, outerlevel_objective
+export innerlevel_optimizer, innerlevel_objective, outerlevel_objective, outerlevel_different_mu
 
 end

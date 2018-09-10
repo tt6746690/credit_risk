@@ -1,3 +1,6 @@
+import Pkg
+Pkg.activate(".")
+
 include("CreditRisk.jl")
 
 module tst

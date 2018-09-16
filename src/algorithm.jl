@@ -335,3 +335,65 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     end
     return estimate
 end
+
+
+
+" Computes μ for the approximating standard normal of loss probability"
+function approx_μ(pnc, weights)
+    sum(pnc .* weights)
+end
+
+" Computes σ for the approximating standard normal of loss probability"
+function approx_σ(pnc, lgc, ead, A, B)
+    n, c = size(lgc)
+    i = 1
+    for a = 1:c
+        for b = 1:(a-1)
+            @. A[:,i] = (lgc[:,a] - lgc[:,b])^2 * pnc[:,a] * pnc[:,b]
+            i += 1
+        end
+    end
+    sum!(B, A)
+    sqrt(sum(@. ead^2 * B) / sum(ead)^2)
+end
+
+
+"""
+    onelvl_mc(parameter::Parameter, nz::Int64, io::IO=Union{IO, Nothing}=nothing)
+
+    One level Monte Carlo simulation using
+        conditional portfolio loss approaches in distribution to standard normal distribution
+        (L - μ) / σ  ⟶ N(0, 1)
+"""
+function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothing)
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+
+    Z = zeros(S)
+    Zdist = MvNormal(S, 1)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+    approx_σ_A = zeros(N, convert(Int, (C-1)*C/2))
+    approx_σ_B = zeros(N)
+
+    estimates = zeros(nz)
+    for i = 1:nz
+        rand!(Zdist, Z)
+        @. phi = normcdf((H - $(β*Z)) / denom)
+        diff!(pnc, phi0; dims=2)
+
+        μ = approx_μ(pnc, weights)
+        σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B)
+        p = 1 - normcdf((l-μ)/σ)
+
+        estimates[i] = p
+
+        (i) % 500 == 0 && begin
+            if io != nothing
+                println(io, string(mean(estimates[1:i])))
+                flush(io)
+            end
+        end
+    end
+    return mean(estimates)
+end

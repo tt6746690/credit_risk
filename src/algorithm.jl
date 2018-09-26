@@ -12,7 +12,6 @@ import Statistics: mean
 include("utils.jl")
 include("parameter.jl")
 
-
 function record_current(io, i, j, estimate, estimates)
     if io != nothing
         prop = j/((i-1)*ne+j)
@@ -339,22 +338,36 @@ end
 
 
 " Computes μ for the approximating standard normal of loss probability"
-function approx_μ(pnc, weights)
-    sum(pnc .* weights)
+function approx_μ(pnc, weights, A)
+    @. A = pnc * weights
+    sum(A)
 end
 
+
+22000
+
 " Computes σ for the approximating standard normal of loss probability"
-function approx_σ(pnc, lgc, ead, A, B)
+function approx_σ(pnc, lgc, ead, A, B, C)
     n, c = size(lgc)
     i = 1
+
+    lgcs = Vector{SubArray}(undef, c)
+    pncs = Vector{SubArray}(undef, c)
+    for idx = 1:c
+        lgcs[idx] = @view lgc[:,idx]
+        pncs[idx] = @view pnc[:,idx]
+    end
+
     for a = 1:c
         for b = 1:(a-1)
-            @. A[:,i] = (lgc[:,a] - lgc[:,b])^2 * pnc[:,a] * pnc[:,b]
+            @. A[:,i] = (lgcs[a] - lgcs[b])^2 * pncs[a] * pncs[b]
             i += 1
         end
     end
+
     sum!(B, A)
-    sqrt(sum(@. ead^2 * B) / sum(ead)^2)
+    @. C = ead^2 * B
+    sqrt(sum(C) / sum(ead)^2)
 end
 
 
@@ -369,21 +382,25 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
     Z = zeros(S)
+    βZ = zeros(N)
     Zdist = MvNormal(S, 1)
     phi0 = zeros(N, C+1)
     phi  = @view phi0[:,2:end]
     pnc = zeros(N, C)
+    approx_μ_A = similar(weights)
     approx_σ_A = zeros(N, convert(Int, (C-1)*C/2))
     approx_σ_B = zeros(N)
+    approx_σ_C = zeros(N)
 
     estimates = zeros(nz)
     for i = 1:nz
         rand!(Zdist, Z)
-        @. phi = normcdf((H - $(β*Z)) / denom)
+        mul!(βZ, β, Z)
+        @. phi = normcdf((H - βZ) / denom)
         diff!(pnc, phi0; dims=2)
 
-        μ = approx_μ(pnc, weights)
-        σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B)
+        μ = approx_μ(pnc, weights, approx_μ_A)
+        σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
         p = 1 - normcdf((l-μ)/σ)
 
         estimates[i] = p

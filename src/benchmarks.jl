@@ -6,7 +6,7 @@ import BenchmarkTools: @benchmark
 import Optim: optimize
 import Optim: BFGS, LBFGS, ConjugateGradient, GradientDescent
 import Optim: MomentumGradientDescent, AcceleratedGradientDescent
-import PyPlot: surf, savefig
+import PyPlot: surf, savefig, plot
 import Plots: contour, pdf
 
 " Inner level optimization on a univariate convex function
@@ -121,9 +121,9 @@ end
 function outerlevel_objective()
     n = 2500
     c = 4
-    s = 2  # 2D for easy visualization
+    s = 1  # 2D for easy visualization
     l = 0.2
-    step = 0.01
+    step = 0.02
 
     # for l in 0:0.01:0.2
     for l in [0.2]
@@ -145,13 +145,18 @@ function outerlevel_objective()
             θ*l - Ψ(θ, pnc, weights) + 0.5z'z
         end
 
-        xs = -2:step:2
-        ys = -2:step:2
-        zs = [objective([x, y]) for x in xs, y in ys]
+        # xs = -3:step:3
+        # ys = -3:step:3
+        # zs = [objective([x, y]) for x in xs, y in ys]
+
+        xs = -3:step:3
+        ys = [objective([x]) for x in xs]
+        display(plot(xs, ys))
+
         #
-        obj_wrapped(x, y) = objective([x, y])
-        c = contour(xs, ys, obj_wrapped, levels=100)
-        pdf(c, "contour_$l.pdf")
+        # obj_wrapped(x, y) = objective([x, y])
+        # c = contour(xs, ys, obj_wrapped, levels=100)
+        # pdf(c, "contour_$l.pdf")
 
         # display(surf(zs))
         # savefig("surf_$l.pdf", format="pdf")

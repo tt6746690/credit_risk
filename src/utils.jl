@@ -27,7 +27,6 @@ macro checksize(expected, array)
     end
 end
 
-
 " cdf of univariate unit normal distribution "
 function normcdf(x)
     cdf(Normal(), x)

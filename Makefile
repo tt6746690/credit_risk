@@ -19,4 +19,4 @@ avoidpasswordduringssh:
 
 clean:
 	rm src/*.mem ||:
-	rm *.pdf     ||:
+	# rm *.pdf     ||:

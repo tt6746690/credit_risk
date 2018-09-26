@@ -55,6 +55,7 @@ struct Parameter
     end
 end
 
+
 function Parameter(N, C, S, l)
     N >= 0 || throw(ArgumentError("Invalid number of creditors: $N"))
     C >= 0 || throw(ArgumentError("Invalid number of credit states: $C"))

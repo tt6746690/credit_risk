@@ -10,5 +10,7 @@
 *.cov
 *.mem
 
-# vim 
+# vim
 *.swp
+
+*.txt

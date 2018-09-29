@@ -36,22 +36,4 @@ display(p)
 # ls = range(0.62; stop=0.8, length=10)
 # make_replications((ls, nrep), "glassermanli4.txt")
 
-
-# display("bernoulli")
-# for n = 1:10
-#     p = bernoulli_mc(param, (nz,ne))
-#     display(p)
-# end
-#
-#
-# display("one level")
-# for n = 1:10
-#     p = onelvl_mc(param, 10000)
-#     display(p)
-# end
-
-# @time p = glassermanli_mc(Parameter(n,c,s,l), (nz,ne))
-# display(p)
-
-
 end

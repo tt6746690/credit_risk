@@ -1,8 +1,4 @@
 
-import Statistics: quantile
-import Distributions: cdf, Normal
-
-
 macro varname(variable)
     string(variable)
 end

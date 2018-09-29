@@ -1,6 +1,3 @@
-import Plots: scatter
-import Serialization: serialize, deserialize
-
 include("parameter.jl")
 
 

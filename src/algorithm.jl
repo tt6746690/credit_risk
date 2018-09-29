@@ -1,14 +1,3 @@
-import Optim
-import Optim: optimize
-import Optim: BFGS, LBFGS, ConjugateGradient, GradientDescent
-import Optim: MomentumGradientDescent, AcceleratedGradientDescent
-
-import LinearAlgebra: mul!, ⋅, dot
-import Base.MathConstants: e
-import Random: rand!
-import Distributions: cdf, Normal, MvNormal
-import Statistics: mean
-
 include("utils.jl")
 include("parameter.jl")
 
@@ -344,8 +333,6 @@ function approx_μ(pnc, weights, A)
 end
 
 
-22000
-
 " Computes σ for the approximating standard normal of loss probability"
 function approx_σ(pnc, lgc, ead, A, B, C)
     n, c = size(lgc)
@@ -391,6 +378,66 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
     approx_σ_A = zeros(N, convert(Int, (C-1)*C/2))
     approx_σ_B = zeros(N)
     approx_σ_C = zeros(N)
+
+    estimates = zeros(nz)
+    for i = 1:nz
+        rand!(Zdist, Z)
+        mul!(βZ, β, Z)
+        @. phi = normcdf((H - βZ) / denom)
+        diff!(pnc, phi0; dims=2)
+
+        μ = approx_μ(pnc, weights, approx_μ_A)
+        σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
+        p = 1 - normcdf((l-μ)/σ)
+
+        estimates[i] = p
+
+        (i) % 500 == 0 && begin
+            if io != nothing
+                println(io, string(mean(estimates[1:i])))
+                flush(io)
+            end
+        end
+    end
+    return mean(estimates)
+end
+
+
+
+
+"""
+    Approximating the zero variance importance sampler
+"""
+function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothing)
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+
+    Z = zeros(S)
+    βZ = zeros(N)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+    approx_μ_A = similar(weights)
+    approx_σ_A = zeros(N, convert(Int, (C-1)*C/2))
+    approx_σ_B = zeros(N)
+    approx_σ_C = zeros(N)
+
+    # sample from π(z) with MCMC
+
+    function π(Z)
+        mul!(βZ, β, Z)
+        @. phi = normcdf((H - βZ) / denom)
+        diff!(pnc, phi0; dims=2)
+        μ = approx_μ(pnc, weights, approx_μ_A)
+        σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
+        p = 1 - normcdf((l-μ)/σ)
+        return p
+    end
+
+
+    # train zero variance IS sampler with Gaussian Mixture
+
+
+    Zdist = MvNormal(S, 1)
 
     estimates = zeros(nz)
     for i = 1:nz

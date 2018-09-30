@@ -431,35 +431,31 @@ function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=
         μ = approx_μ(pnc, weights, approx_μ_A)
         σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
         p = (1 - normcdf((l-μ)/σ)) * pdf(Zdist, Z)
-        return p
+        return max(p, 1e-100)
     end
 
-    n_samples = 600
     burn_ratio = 0.1
     initial_point = zeros(S)
 
-    samples = slicesample(initial_point, π, n_samples;
+    Zs = slicesample(initial_point, π, nz;
         step_limit=20,
         width=0.5,
-        burn=Int(burn_ratio * n_samples),
+        burn=Int(burn_ratio * nz),
         thin=3)
 
-
-    # train zero variance IS sampler with Gaussian Mixture
-
-
-
+    # TODO: train zero variance IS sampler with Gaussian Mixture
 
     estimates = zeros(nz)
     for i = 1:nz
-        rand!(Zdist, Z)
+        Z = Zs[:,i]
         mul!(βZ, β, Z)
         @. phi = normcdf((H - βZ) / denom)
         diff!(pnc, phi0; dims=2)
 
         μ = approx_μ(pnc, weights, approx_μ_A)
         σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
-        p = 1 - normcdf((l-μ)/σ)
+        p = (1 - normcdf((l-μ)/σ)) * pdf(Zdist, Z) / π(Z)
+        display("p:$p I:$((1 - normcdf((l-μ)/σ))) * pdf: $(pdf(Zdist, Z)) / pipdf: $(π(Z))")
 
         estimates[i] = p
 

@@ -60,7 +60,7 @@ function Parameter(N, C, S, l)
     N >= 0 || throw(ArgumentError("Invalid number of creditors: $N"))
     C >= 0 || throw(ArgumentError("Invalid number of credit states: $C"))
     S >= 0 || throw(ArgumentError("Invalid Dimension for systematic risk factor: $S"))
-    0 <= l <= 1 || throw(ArgumentError("Invalid tail probability $l"))
+    # 0 <= l <= 1 || throw(ArgumentError("Invalid tail probability $l"))
 
     p = @. 0.01*(1 + sin(16π*(1:N)/N))
     cmm = zeros(N, C)

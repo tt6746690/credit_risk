@@ -420,8 +420,9 @@ function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=
     approx_σ_A = zeros(N, convert(Int, (C-1)*C/2))
     approx_σ_B = zeros(N)
     approx_σ_C = zeros(N)
+    Zdist = MvNormal(S, 1)
 
-    # sample from π(z) with MCMC
+    # sample from π(z) with slice sampler
 
     function π(Z)
         mul!(βZ, β, Z)
@@ -429,15 +430,25 @@ function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=
         diff!(pnc, phi0; dims=2)
         μ = approx_μ(pnc, weights, approx_μ_A)
         σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
-        p = 1 - normcdf((l-μ)/σ)
+        p = (1 - normcdf((l-μ)/σ)) * pdf(Zdist, Z)
         return p
     end
+
+    n_samples = 600
+    burn_ratio = 0.1
+    initial_point = zeros(S)
+
+    samples = slicesample(initial_point, π, n_samples;
+        step_limit=20,
+        width=0.5,
+        burn=Int(burn_ratio * n_samples),
+        thin=3)
 
 
     # train zero variance IS sampler with Gaussian Mixture
 
 
-    Zdist = MvNormal(S, 1)
+
 
     estimates = zeros(nz)
     for i = 1:nz

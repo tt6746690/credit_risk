@@ -4,7 +4,7 @@ include("parameter.jl")
 function record_current(io, i, j, estimate, estimates)
     if io != nothing
         prop = j/((i-1)*ne+j)
-        est = (1-prop)*estimates + (prop)*mean(estimates[1:j])
+        est = (1-prop)*estimate + (prop)*mean(estimates[1:j])
         println(io, string(mean(est)))
         flush(io)
     end
@@ -189,13 +189,11 @@ struct OuterLevelTwisting
     μ::Array{Float64, 1}
     innerlevel::InnerLevelTwisting
     Ψ::Any
-    initialguess::Array{Float64, 1}
     n_restarts::Int64
 
-    function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, n_restarts)
         @checksize (S,)     μ
-        @checksize (S,)     initialguess
-        new(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+        new(N, C, S, μ, innerlevel, Ψ, n_restarts)
     end
 end
 
@@ -203,9 +201,10 @@ function OuterLevelTwisting(N, C, S)
     μ = zeros(S)
     innerlevel = InnerLevelTwisting(N, C)
     Ψ = init_Ψ()
-    initialguess = zeros(S)
-    n_restarts = 20
-    OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    #initialguess = zeros(S)
+    #n_restarts = 20
+    n_restarts = 2
+    OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, n_restarts)
 end
 
 
@@ -213,7 +212,7 @@ get_result(t::OuterLevelTwisting) = t.μ
 set_result!(t::OuterLevelTwisting, μ) = (t.μ[:] = μ)
 
 
-function twist!(t::OuterLevelTwisting, parameter::Parameter)
+function twist_local!(t::OuterLevelTwisting, parameter::Parameter)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
     phi0 = zeros(N, C+1)
     phi  = @view phi0[:,2:end]
@@ -233,23 +232,75 @@ function twist!(t::OuterLevelTwisting, parameter::Parameter)
         "LBFGS" => LBFGS(),
         "MomentumGradientDescent" => MomentumGradientDescent()
     )
+    minimizers = []
     for i = 1:t.n_restarts
+        initialguess = rand(S)*2.0 .- 1.0
         op = rand(optimizers)
         optimizer = op[2]
         println("Start $i optimization with $(op[1])")
 
-        results = optimize(objective, t.initialguess, optimizer)
+        results = optimize(objective, initialguess, optimizer)
         if Optim.converged(results)
             minimizer = Optim.minimizer(results)
-            println("mu: $minimizer; f(mu): $(objective(minimizer))")
-            set_result!(t, minimizer)
-            t.initialguess[:] .= minimizer
-            return
+            #println("mu: $minimizer; f(mu): $(objective(minimizer))")
+            push!(minimizers, minimizer)
         end
     end
+    if size(minimizers) == 0
+        set_result!(t, zeros(S))
+    else
+        fmins = [objective(x) for x in minimizers]
+        # find index i wheere fmin is smallest
+        println("minimizers: $fmins")
+        #i = argmin(fmins)
+        set_result!(t, minimizers[1])
+    end
+end
 
-    display("Outer level optimization failed to converged with $(t.n_restarts) restarts.")
-    set_result!(t, zeros(S))
+
+function twist_global!(t::OuterLevelTwisting, parameter::Parameter)
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+
+    function objective(z)
+        @checksize (S,) z
+        @. phi = normcdf((H - $(β*z)) / denom)
+        diff!(pnc, phi0; dims=2)
+        twist!(t.innerlevel, pnc, weights, l)
+        θ = get_result(t.innerlevel)
+        θ*l - t.Ψ(θ, pnc, weights) + 0.5z'z
+    end
+
+    optimizers = Dict(
+        "BFGS" => BFGS(),
+        "LBFGS" => LBFGS(),
+        "MomentumGradientDescent" => MomentumGradientDescent()
+    )
+    minimizers = []
+    for i = 1:t.n_restarts
+        initialguess = rand(S)*2.0 .- 1.0
+        op = rand(optimizers)
+        optimizer = op[2]
+        println("Start $i optimization with $(op[1])")
+
+        results = optimize(objective, initialguess, optimizer)
+        if Optim.converged(results)
+            minimizer = Optim.minimizer(results)
+            #println("mu: $minimizer; f(mu): $(objective(minimizer))")
+            push!(minimizers, minimizer)
+        end
+    end
+    if size(minimizers) == 0
+        set_result!(t, zeros(S))
+    else
+        fmins = [objective(x) for x in minimizers]
+        # find index i wheere fmin is smallest
+        println("minimizers: $fmins")
+        i = argmin(fmins)
+        set_result!(t, minimizers[i])
+    end
 end
 
 
@@ -261,7 +312,7 @@ end
        ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
        ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
 """
-function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing), io::Union{IO, Nothing}=nothing)
+function glassermanli_mc_local(parameter::Parameter, sample_size::Tuple{Int64, Int64}, filename:: String, extra_params=(nothing, nothing))
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
     (mu, theta) = extra_params
@@ -285,7 +336,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     Ψ = init_Ψ()
 
     if mu == nothing
-        twist!(outerlevel, parameter)
+        twist_local!(outerlevel, parameter)
         μ = get_result(outerlevel)
     else
         μ = mu
@@ -294,35 +345,121 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
 
     estimate = 0
     estimates = zeros(ne)
-    for i = 1:nz
-        rand!(Zdist, Z)
-        @. phi = normcdf((H - $(β*Z)) / denom)
-        diff!(pnc, phi0; dims=2)
-        # Twist bernoulli distribution pnc → qnc
-        if theta == nothing
-            twist!(innerlevel, pnc, weights, l)
-            θ = get_result(innerlevel)
-        else
-            θ = theta
-        end
-        @. twist = pnc*ℯ^(θ*weights)
-        sum!(mgf, twist)
-        @. qnc = twist / mgf
+    open(filename, "w") do io
+        for i = 1:nz
+            rand!(Zdist, Z)
+            @. phi = normcdf((H - $(β*Z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            # Twist bernoulli distribution pnc → qnc
+            if theta == nothing
+                twist!(innerlevel, pnc, weights, l)
+                θ = get_result(innerlevel)
+            else
+                θ = theta
+            end
+            @. twist = pnc*ℯ^(θ*weights)
+            sum!(mgf, twist)
+            @. qnc = twist / mgf
 
-        for j = 1:ne
-            # Sample weights from bernoulli distribution
-            rand!(u)
-            @. W = (qn1 >= u)
-            L = w1 ⋅ W
-            lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
-            estimates[j] = (L >= l)*lr
-            (i*ne + j) % 500 == 0 &&
-                record_current(io, i, j, estimate, estimates)
+            for j = 1:ne
+                # Sample weights from bernoulli distribution
+                rand!(u)
+                @. W = (qn1 >= u)
+                L = w1 ⋅ W
+                lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
+                estimates[j] = (L >= l)*lr
+                (i*ne + j) % 5 == 0 && begin
+                    prop = j/((i-1)*ne+j)
+                    est = (1-prop)*estimate + (prop)*mean(estimates[1:j])
+                    println(io, string(mean(est)))
+                    flush(io)
+                end
+            end
+            estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
         end
-        estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
     return estimate
 end
+
+
+"""
+    glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
+
+    Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
+        of Z and weights w
+       ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
+       ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
+"""
+function glassermanli_mc_global(parameter::Parameter, sample_size::Tuple{Int64, Int64}, filename:: String, extra_params=(nothing, nothing))
+    nz, ne = sample_size
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+    (mu, theta) = extra_params
+
+    μ = zeros(S)
+    Z = zeros(S)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+    twist = zeros(N, C)
+    mgf = zeros(N)
+    qnc = zeros(N, C)
+    qn1 = @view qnc[:,1]
+    u = zeros(N)
+    W = zeros(N)
+    w1 = @view weights[:,1]
+    losses = zeros(N)
+
+    outerlevel = OuterLevelTwisting(N, C, S)
+    innerlevel = InnerLevelTwisting(N, C)
+    Ψ = init_Ψ()
+
+    if mu == nothing
+        twist_global!(outerlevel, parameter)
+        μ = get_result(outerlevel)
+    else
+        μ = mu
+    end
+    Zdist = MvNormal(μ, 1)
+
+    estimate = 0
+    estimates = zeros(ne)
+    open(filename, "w") do io
+        for i = 1:nz
+            rand!(Zdist, Z)
+            @. phi = normcdf((H - $(β*Z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            # Twist bernoulli distribution pnc → qnc
+            if theta == nothing
+                twist!(innerlevel, pnc, weights, l)
+                θ = get_result(innerlevel)
+            else
+                θ = theta
+            end
+            @. twist = pnc*ℯ^(θ*weights)
+            sum!(mgf, twist)
+            @. qnc = twist / mgf
+
+            for j = 1:ne
+                # Sample weights from bernoulli distribution
+                rand!(u)
+                @. W = (qn1 >= u)
+                L = w1 ⋅ W
+                lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
+                estimates[j] = (L >= l)*lr
+                (i*ne + j) % 5 == 0 && begin
+                    prop = j/((i-1)*ne+j)
+                    est = (1-prop)*estimate + (prop)*mean(estimates[1:j])
+                    println(io, string(mean(est)))
+                    flush(io)
+                end
+            end
+            estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
+        end
+    end
+    return estimate
+end
+
+
 
 
 

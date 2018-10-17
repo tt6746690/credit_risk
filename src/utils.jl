@@ -33,6 +33,11 @@ function invnormcdf(p; μ=0, σ=1)
     return quantile(Normal(μ, σ), p)
 end
 
+" Inverse of student-t distribution's cumulative distribution function "
+function invtcdf(p; ν=1)
+    return quantile(TDist(ν), p)
+end
+
 
 " Find difference operator of matrix or vector `B`. Results stored in `A`
     ⚈ no allocation

@@ -210,7 +210,7 @@ end
 
 
 get_result(t::OuterLevelTwisting) = t.μ
-set_result!(t::OuterLevelTwisting, μ) = (t.μ[:] = μ)
+set_result!(t::OuterLevelTwisting, μ) = t.μ[:] = isa(μ, Array) ? μ : [μ]
 
 
 function twist!(t::OuterLevelTwisting, parameter::Parameter)
@@ -292,8 +292,10 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     end
     Zdist = MvNormal(μ, 1)
 
+    k = 0
     estimate = 0
-    estimates = zeros(ne)
+    estimates = zeros(nz*ne)
+    cum_estimates = zeros(nz)
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
@@ -315,13 +317,14 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             @. W = (qn1 >= u)
             L = w1 ⋅ W
             lr = e^(-μ'Z + 0.5μ'μ -θ*L + Ψ(θ, pnc, weights))
-            estimates[j] = (L >= l)*lr
-            (i*ne + j) % 500 == 0 &&
-                record_current(io, i, j, estimate, estimates)
+
+            k = (i-1)*ne + j
+            estimates[k] = (L >= l)*lr
         end
+        cum_estimates[i] = mean(estimates[1:i])
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
-    return estimate
+    return cum_estimates
 end
 
 
@@ -368,6 +371,11 @@ end
 function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothing)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
 
+    C₀, C₁ = 0.7164, 31.395
+    w = zeros(N)
+    w = ead ./ sum(ead)
+    M = zeros(N)
+
     Z = zeros(S)
     βZ = zeros(N)
     Zdist = MvNormal(S, 1)
@@ -380,6 +388,10 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
     approx_σ_C = zeros(N)
 
     estimates = zeros(nz)
+    cum_estimates = zeros(nz)
+    upper, lower = zeros(nz), zeros(nz)
+    uppers, lowers = zeros(nz), zeros(nz)
+
     for i = 1:nz
         rand!(Zdist, Z)
         mul!(βZ, β, Z)
@@ -390,7 +402,16 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
         σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
         p = 1 - normcdf((l-μ)/σ)
 
+        M = w .* sum(lgc .* pnc; dims=2)
+        ρ = sum(@. abs((weights - M) / σ)^3 * pnc)
+        bound = min(C₀ * ρ, C₁ * ρ / (1 + abs((l-μ)/σ)^3))
+
         estimates[i] = p
+        cum_estimates[i] = mean(estimates[1:i])
+        lower[i] = p - bound
+        upper[i] = p + bound
+        lowers[i] = mean(lower[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(lower[1:i])/i)
+        uppers[i] = mean(upper[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(upper[1:i])/i)
 
         (i) % 500 == 0 && begin
             if io != nothing
@@ -399,7 +420,7 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
             end
         end
     end
-    return mean(estimates)
+    return cum_estimates, lowers, uppers
 end
 
 

@@ -3,8 +3,8 @@ module CreditRisk
 import Random: rand!
 import Base.MathConstants: e
 import LinearAlgebra: mul!, ⋅, dot
-import Distributions: pdf, cdf, Normal, MvNormal
-import Statistics: mean, quantile
+import Distributions: pdf, cdf, Normal, MvNormal, TDist
+import Statistics: mean, quantile, var
 
 import Serialization: serialize, deserialize
 import BenchmarkTools: @benchmark
@@ -23,7 +23,7 @@ include("sampler.jl")
 include("algorithm.jl")
 include("scripts.jl")
 
-export msexpr, checksize, diff!, normcdf, invnormcdf
+export msexpr, checksize, diff!, normcdf, invnormcdf, invtcdf
 export Parameter, unpack
 export slicesample
 export InnerLevelTwisting, OuterLevelTwisting, twist!, init_Ψ, get_result, set_result!

@@ -32,7 +32,8 @@ function slicesample(
     width::Union{Array{Float64, 1}, Float64} = 1.,
     burn::Int = 0,
     thin::Int = 1,
-    logpdf::Bool = false)
+    logpdf::Bool = false,
+    stepin::Bool = true)
 
     D = size(x0, 1)
     if isa(width, Float64)
@@ -107,10 +108,12 @@ function slicesample(
 
                 gx >= logy && break
 
-                if x′[d] > x[d]
-                    R[d] = x′[d]
-                else
-                    L[d] = x′[d]
+                if stepin
+                    if x′[d] > x[d]
+                        R[d] = x′[d]
+                    else
+                        L[d] = x′[d]
+                    end
                 end
             end
 

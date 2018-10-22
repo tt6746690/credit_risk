@@ -1,10 +1,10 @@
 include("utils.jl")
 include("parameter.jl")
 
-function record_current(io, i, j, estimate, estimates)
+function record_current(io, i, j, k, estimate, estimates)
     if io != nothing
-        prop = j/((i-1)*ne+j)
-        est = (1-prop)*estimates + (prop)*mean(estimates[1:j])
+        prop = j/k
+        est = (1-prop)*estimate + (prop)*mean(estimates[1:j])
         println(io, string(mean(est)))
         flush(io)
     end
@@ -43,8 +43,11 @@ function simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::U
             @. ind = Y <= H[:,1]
             @. losses = w1 * ind
             estimates[j] = (sum(losses) >= l)
-            (i*ne + j) % 500 == 0 &&
-                record_current(io, i, j, estimate, estimates)
+
+            k = (i-1)*ne+j
+            if k % 500 == 0
+                record_current(io, i, j, k, estimate, estimates)
+            end
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
@@ -86,7 +89,7 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     Zdist = MvNormal(S, 1)
 
     estimate = 0
-    estimates = zeros(ne)
+    estimates = zeros(ne*ne)
     for i = 1:nz
         rand!(Zdist, Z)
         @. phi = normcdf((H - $(β*Z)) / denom)
@@ -96,8 +99,11 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
             @. W = (pn1 >= u)
             @. losses = w1 * W
             estimates[j] = (sum(losses) >= l)
-            (i*ne + j) % 500 == 0 &&
-                record_current(io, i, j, estimate, estimates)
+
+            k = (i-1)*ne+j
+            if k % 500 == 0
+                record_current(io, i, j, k, estimate, estimates)
+            end
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
@@ -320,8 +326,14 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
 
             k = (i-1)*ne + j
             estimates[k] = (L >= l)*lr
+
+            k = (i-1)*ne+j
+            if k % 500 == 0
+                record_current(io, i, j, k, estimate, estimates)
+            end
+
         end
-        cum_estimates[i] = mean(estimates[1:i])
+        cum_estimates[i] = mean(estimates[1:i*ne])
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end
     return cum_estimates
@@ -457,12 +469,15 @@ function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=
 
     burn_ratio = 0.1
     initial_point = zeros(S)
+    width = (S == 1) ? 15. : 0.5
+    stepin = (S == 1) ? false : true
 
     Zs = slicesample(initial_point, π, nz;
         step_limit=20,
-        width=0.5,
+        width=width,
         burn=Int(burn_ratio * nz),
-        thin=3)
+        thin=3,
+        stepin=stepin)
 
     # TODO: train zero variance IS sampler with Gaussian Mixture
 

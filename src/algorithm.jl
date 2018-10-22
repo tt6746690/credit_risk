@@ -401,8 +401,6 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
 
     estimates = zeros(nz)
     cum_estimates = zeros(nz)
-    upper, lower = zeros(nz), zeros(nz)
-    uppers, lowers = zeros(nz), zeros(nz)
 
     for i = 1:nz
         rand!(Zdist, Z)
@@ -414,16 +412,8 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
         σ = approx_σ(pnc, lgc, ead, approx_σ_A, approx_σ_B, approx_σ_C)
         p = 1 - normcdf((l-μ)/σ)
 
-        M = w .* sum(lgc .* pnc; dims=2)
-        ρ = sum(@. abs((weights - M) / σ)^3 * pnc)
-        bound = min(C₀ * ρ, C₁ * ρ / (1 + abs((l-μ)/σ)^3))
-
         estimates[i] = p
         cum_estimates[i] = mean(estimates[1:i])
-        lower[i] = p - bound
-        upper[i] = p + bound
-        lowers[i] = mean(lower[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(lower[1:i])/i)
-        uppers[i] = mean(upper[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(upper[1:i])/i)
 
         (i) % 500 == 0 && begin
             if io != nothing
@@ -432,9 +422,44 @@ function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothi
             end
         end
     end
-    return cum_estimates, lowers, uppers
+    return cum_estimates, ci.lowers, ci.uppers
 end
 
+
+struct MCConfidenceInterval
+    # magic constants
+    C₀::Float64
+    C₁::Float64
+    param::Parameter
+    # mutables
+    w::Array{Float64, 1}
+    M::Array{Float64, 1}
+    # Stores the bounds
+    upper::Array{Float64, 1}
+    lower::Array{Float64, 1}
+    uppers::Array{Float64, 1}
+    lowers::Array{Float64, 1}
+    # Ctor
+    function MCConfidenceInterval(parameter::Parameter, nz)
+        C₀, C₁ = 0.7164, 31.395
+        w = zeros(nz)
+        M = zeros(nz)
+        w = parameter.ead ./ sum(parameter.ead)
+        new(C₀, C₁, parameter, w, M, zeros(nz), zeros(nz), zeros(nz), zeros(nz))
+    end
+end
+
+
+function track_ci(ci::MCConfidenceInterval, pnc, μ, σ, p, i)
+    ci.M = ci.w .* sum(ci.param.lgc .* pnc; dims=2)
+    ρ = sum(@. abs((ci.param.weights - ci.M) / σ)^3 * ci.pnc)
+    bound = min(ci.C₀ * ρ, ci.C₁ * ρ / (1 + abs((ci.param.l-μ)/σ)^3))
+
+    ci.lower[i] = p - bound
+    ci.upper[i] = p + bound
+    ci.lowers[i] = mean(ci.lower[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(ci.lower[1:i])/i)
+    ci.uppers[i] = mean(ci.upper[1:i]) + invtcdf(0.95; ν=i) * sqrt(var(ci.upper[1:i])/i)
+end
 
 
 

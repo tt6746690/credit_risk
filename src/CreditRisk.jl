@@ -17,10 +17,20 @@ import Optim: MomentumGradientDescent, AcceleratedGradientDescent
 import PyPlot: surf, savefig, plot
 import Plots: contour, scatter
 
+# General utilities
 include("utils.jl")
-include("parameter.jl")
 include("sampler.jl")
-include("algorithm.jl")
+
+# problem setup & helpers
+include("parameter.jl")
+include("confidence_interval.jl")
+
+# different MC algorithms
+include("mc_simple.jl")
+include("mc_bernoulli.jl")
+include("mc_glassermanli.jl")
+include("mc_zero_variance.jl")
+
 include("scripts.jl")
 
 export msexpr, checksize, diff!, normcdf, invnormcdf, invtcdf

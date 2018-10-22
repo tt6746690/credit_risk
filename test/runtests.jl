@@ -5,6 +5,25 @@ import Distributions: MvNormal, Normal, pdf
 import Statistics: mean, std
 
 
+@testset "io buffer" begin
+    n, c, s, l = 10, 2, 2, 1
+    param = Parameter(n,c,s,l)
+
+    io = IOBuffer()
+    ne, nz = 2, 3
+    # 0.0\n:   4 chars per ne, nz
+
+    estimate = bernoulli_mc(param, (nz, ne), io)
+    @test length(String(take!(io))) >= 3*ne*nz
+
+    estimate = glassermanli_mc(param, (nz, ne), (zeros(s), 0), io)
+    @test length(String(take!(io))) >= 3*ne*nz
+
+    estimate = onelvl_mc(param, nz, io)
+    @test length(String(take!(io))) >= 3*nz
+end
+
+
 @testset "slice sampler" begin
 
     @testset "arguments" begin

@@ -60,3 +60,14 @@ function diff!(A::AbstractMatrix, B::AbstractMatrix; dims::Integer)
         throw(ArgumentError("dimension must be 1 or 2, got $dims"))
     end
 end
+
+
+""" Writes intermediate estimates in two level MCs """
+function record_current(io, i, j, k, estimate, estimates)
+    if io != nothing
+        prop = j/k
+        est = (1-prop)*estimate + (prop)*mean(estimates[1:j])
+        println(io, string(mean(est)))
+        flush(io)
+    end
+end

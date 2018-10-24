@@ -5,26 +5,28 @@ include("CreditRisk.jl")
 
 module tst
 
-import Juno
-import Serialization: serialize, deserialize
-import Random: seed!
-import Profile
+using Revise
+import CreditRisk
+import Serialization: serialize
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
-import Optim: ConjugateGradient
-
-using Main.CreditRisk
 
 n = 2500
 c = 4
 s = 5
 l = 0.2
-nz = 1000
-ne = 1000
-param = Parameter(n,c,s,l)
+nz = 10000
+ne = 10000
+param = CreditRisk.Parameter(n,c,s,l)
 
-@time p = onelvl_mc(param, 10000)
-display(p)
+open("gl_long.txt", "w") do io
+    @time estimates = CreditRisk.glassermanli_mc(param, (nz, ne))
+    serialize(io, estimates)
+end
+
+
+# @time p = onelvl_mc(param, 10000)
+# display(p)
 
 # nrep = 10
 # ls = range(0; stop=0.2, length=11)

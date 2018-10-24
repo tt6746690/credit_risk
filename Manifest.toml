@@ -75,9 +75,9 @@ version = "0.4.1"
 
 [[CategoricalArrays]]
 deps = ["Compat", "Future", "JSON", "Missings", "Printf", "Reexport"]
-git-tree-sha1 = "35f527e3c955b486f2d7de3ec61c6c7cb99e3274"
+git-tree-sha1 = "6362c49130b5888f5628bc197ee5f17aec7d2a88"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "0.3.14"
+version = "0.4.0"
 
 [[Clp]]
 deps = ["BinaryProvider", "Compat", "Libdl", "LinQuadOptInterface", "MathProgBase"]
@@ -116,10 +116,10 @@ uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "1.2.0"
 
 [[Compose]]
-deps = ["Colors", "Compat", "DataStructures", "IterTools", "JSON", "Measures"]
-git-tree-sha1 = "9a77c574fd4b05a818be68f7781dcea8f8965181"
+deps = ["Base64", "Colors", "DataStructures", "Dates", "IterTools", "JSON", "Measures", "Pkg", "Printf", "Random", "Requires", "Statistics", "Test", "UUIDs"]
+git-tree-sha1 = "094b3621ca24ac5a4034b80bd329bfb457a882ab"
 uuid = "a81c6b42-2e10-5240-aca2-a61377ecd94b"
-version = "0.6.1"
+version = "0.7.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
@@ -262,9 +262,9 @@ version = "0.4.0"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "Distributed", "IniFile", "MbedTLS", "Sockets", "Test"]
-git-tree-sha1 = "16499da36240bf80df9a7e9b0f228710be1fe37c"
+git-tree-sha1 = "b881f69331e85642be315c63d05ed65d6fc8a05b"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.7.0"
+version = "0.7.1"
 
 [[HTTPClient]]
 deps = ["Compat", "LibCURL"]
@@ -484,9 +484,9 @@ version = "0.16.0"
 
 [[OrderedCollections]]
 deps = ["Pkg", "Random", "Serialization", "Test"]
-git-tree-sha1 = "41da1edba028376b58520ca01d9a41e29f855d55"
+git-tree-sha1 = "85619a3f3e17bb4761fe1b1fd47f0e979f964d5b"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.0.1"
+version = "1.0.2"
 
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
@@ -588,9 +588,9 @@ version = "0.5.2"
 
 [[ReverseDiffSparse]]
 deps = ["Calculus", "Compat", "DataStructures", "ForwardDiff", "MathProgBase", "NaNMath", "Pkg"]
-git-tree-sha1 = "fe3cefe22714c9453ba2fdc23a9f61d165b37a15"
+git-tree-sha1 = "2cb17849ace67b13262de616e7dc080dc188e832"
 uuid = "89212889-6d3f-5f97-b412-7825138f6c9c"
-version = "0.8.2"
+version = "0.8.3"
 
 [[Revise]]
 deps = ["Distributed", "FileWatching", "InteractiveUtils", "LibGit2", "OrderedCollections", "Pkg", "REPL", "Random", "Test", "UUIDs", "Unicode"]

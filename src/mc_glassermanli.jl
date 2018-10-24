@@ -83,23 +83,24 @@ struct OuterLevelTwisting
     μ::Array{Float64, 1}
     innerlevel::InnerLevelTwisting
     Ψ::Any
-    initialguess::Array{Float64, 1}
+    # Number of restarts before giving up
     n_restarts::Int64
+    # Number of initial guesses to start optimization
+    n_initial::Int64
 
-    function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    function OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, n_restarts, n_initial)
         @checksize (S,)     μ
-        @checksize (S,)     initialguess
-        new(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+        new(N, C, S, μ, innerlevel, Ψ, n_restarts, n_initial)
     end
 end
 
-function OuterLevelTwisting(N, C, S)
+""" n_initial=1 -> local;  n_initial>1 -> global """
+function OuterLevelTwisting(N, C, S, n_initial)
     μ = zeros(S)
     innerlevel = InnerLevelTwisting(N, C)
     Ψ = init_Ψ()
-    initialguess = zeros(S)
-    n_restarts = 20
-    OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, initialguess, n_restarts)
+    n_restarts = 5
+    OuterLevelTwisting(N, C, S, μ, innerlevel, Ψ, n_restarts, n_initial)
 end
 
 
@@ -127,23 +128,30 @@ function twist!(t::OuterLevelTwisting, parameter::Parameter)
         "LBFGS" => LBFGS(),
         "MomentumGradientDescent" => MomentumGradientDescent()
     )
-    for i = 1:t.n_restarts
-        op = rand(optimizers)
-        optimizer = op[2]
-        println("Start $i optimization with $(op[1])")
 
-        results = optimize(objective, t.initialguess, optimizer)
-        if Optim.converged(results)
-            minimizer = Optim.minimizer(results)
-            println("mu: $minimizer; f(mu): $(objective(minimizer))")
-            set_result!(t, minimizer)
-            t.initialguess[:] .= minimizer
-            return
+    minimizers = []
+    while length(minimizers) < t.n_initial
+        for i = 1:t.n_restarts
+            initialguess = rand(S)*2.0 .- 1.0
+            op = rand(optimizers)
+            optimizer = op[2]
+            println("Start $i optimization with $(op[1])")
+
+            results = optimize(objective, initialguess, optimizer)
+            if Optim.converged(results)
+                minimizer = Optim.minimizer(results)
+                push!(minimizers, minimizer)
+                break
+            elseif i == t.n_restarts
+                push!(minimizers, zeros(S))
+            end
         end
     end
 
-    display("Outer level optimization failed to converged with $(t.n_restarts) restarts.")
-    set_result!(t, zeros(S))
+    fmins = [objective(x) for x in minimizers]
+    println("minimizers: $minimizers")
+    println("obj(minimizers): $fmins")
+    set_result!(t, minimizers[argmin(fmins)])
 end
 
 
@@ -172,10 +180,10 @@ end
         println(estimates[end-100:end])
 
 """
-function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing), io::Union{IO, Nothing}=nothing)
+function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing, nothing), io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
-    (mu, theta) = extra_params
+    (mu, theta, n_initial) = extra_params
 
     μ = zeros(S)
     Z = zeros(S)
@@ -191,7 +199,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     w1 = @view weights[:,1]
     losses = zeros(N)
 
-    outerlevel = OuterLevelTwisting(N, C, S)
+    outerlevel = OuterLevelTwisting(N, C, S, n_initial)
     innerlevel = InnerLevelTwisting(N, C)
     Ψ = init_Ψ()
 

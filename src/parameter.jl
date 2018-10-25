@@ -91,6 +91,42 @@ function Parameter(N, C, S, l)
     return Parameter(N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights)
 end
 
+parameter_filename(n, c, s, l) = "n_$(n)_c_$(c)_s_$(s)_l_$(l)"
+
+"""
+    tofrom_file: save to / load from file when set to `true`
+                otherwise, just create new `Parameter`
+"""
+function Parameter(N, C, S, l, tofrom_file::Bool)
+
+    rootdir = "/"*relpath((@__FILE__)*"/../..","/")
+    datadir = joinpath(rootdir, "data")
+    if isdir(datadir) == false
+        mkdir(datadir)
+    end
+
+    path = joinpath(datadir, parameter_filename(N, C, S, l))
+
+    if tofrom_file
+        if isfile(path)
+            println("Load $path")
+            f = open(path, "r")
+            param = deserialize(f)
+            close(f)
+            return param
+        else
+            println("Save $path")
+            param = Parameter(N, C, S, l)
+            open(path, "w") do io
+                serialize(io, param)
+            end
+            return param
+        end
+    else
+        return Parameter(N, C, S, l)
+    end
+end
+
 
 function unpack(p::Parameter)
     return (

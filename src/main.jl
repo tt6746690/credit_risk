@@ -6,9 +6,9 @@ include("CreditRisk.jl")
 module tst
 
 using Revise
+using ArgParse
 import CreditRisk
 
-using ArgParse
 
 function parse_commandline()
     s = ArgParseSettings()
@@ -73,34 +73,5 @@ open(filename, "w") do io
         println(estimate)
     end
 end
-
-
-if algo == "bernoulli"
-    
-
-    
-end
-    
-
-
-# open("test.txt", "w") do io
-    
-#     @time estimate = algo(param, (nz, ne), io)
-#     println(estimate)
-# end
-
-
-# @time p = onelvl_mc(param, 10000)
-# display(p)
-
-# nrep = 10
-# ls = range(0; stop=0.2, length=11)
-# make_replications((ls, nrep), "glassermanli1.txt")
-# ls = range(0.22; stop=0.4, length=10)
-# make_replications((ls, nrep), "glassermanli2.txt")
-# ls = range(0.42; stop=0.6, length=10)
-# make_replications((ls, nrep), "glassermanli3.txt")
-# ls = range(0.62; stop=0.8, length=10)
-# make_replications((ls, nrep), "glassermanli4.txt")
 
 end

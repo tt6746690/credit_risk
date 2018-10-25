@@ -238,7 +238,7 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             estimates[j] = (L >= l)*lr
 
             k = (i-1)*ne+j
-            if k % 1 == 0
+            if k % 10 == 0
                 record_current(io, i, j, k, estimate, estimates)
             end
 

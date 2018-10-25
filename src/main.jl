@@ -54,7 +54,7 @@ ne = args["ne"]
 n_init = args["n_init"]
 algo = args["a"]
 filename = args["filename"]
-param = CreditRisk.Parameter(n,c,s,l)
+param = CreditRisk.Parameter(n,c,s,l,true)
 
 println("Parsed args:")
 for (arg,val) in args

@@ -7,22 +7,87 @@ module tst
 
 using Revise
 import CreditRisk
-import Serialization: serialize
-import Profile: @profile
-import BenchmarkTools: @btime, @benchmark
 
-n = 2500
-c = 4
-s = 5
-l = 0.2
-nz = 10000
-ne = 10000
+using ArgParse
+
+function parse_commandline()
+    s = ArgParseSettings()
+
+    @add_arg_table s begin
+        "--n"
+            arg_type = Int64
+            default = 2500
+        "--c"
+            arg_type = Int64
+            default = 4
+        "--s"
+            arg_type = Int64
+            default = 5
+        "--l"
+            arg_type = Float64
+            default = 0.2
+        "--nz"
+            arg_type = Int64
+            default = 100
+        "--ne"
+            arg_type = Int64
+            default = 100
+        "--n_init"
+            arg_type = Int64
+            default = 5
+        "--filename"
+            default = "./default.txt"
+        "--a"
+            default = "bernoulli"
+    end
+
+    return parse_args(s)
+end
+
+args = parse_commandline()
+n = args["n"]
+c = args["c"]
+s = args["s"]
+l = args["l"]
+nz = args["nz"]
+ne = args["ne"]
+n_init = args["n_init"]
+algo = args["a"]
+filename = args["filename"]
 param = CreditRisk.Parameter(n,c,s,l)
 
-open("gl_long.txt", "w") do io
-    @time estimates = CreditRisk.glassermanli_mc(param, (nz, ne))
-    serialize(io, estimates)
+println("Parsed args:")
+for (arg,val) in args
+    println("  $arg  =>  $val")
 end
+
+open(filename, "w") do io
+    if algo == "bernoulli"
+        estimate = CreditRisk.bernoulli_mc(param, (nz, ne), io)
+        println(estimate)
+    elseif algo == "glassermanli"
+        estimate = CreditRisk.glassermanli_mc(param, (nz, ne), (nothing, nothing, n_init), io)
+        println(estimate)
+    else
+        estimate = CreditRisk.bernoulli_mc(param, (nz, ne), io)
+        println(estimate)
+    end
+end
+
+
+if algo == "bernoulli"
+    
+
+    
+end
+    
+
+
+# open("test.txt", "w") do io
+    
+#     @time estimate = algo(param, (nz, ne), io)
+#     println(estimate)
+# end
 
 
 # @time p = onelvl_mc(param, 10000)

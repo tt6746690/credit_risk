@@ -6,10 +6,12 @@ include("CreditRisk.jl")
 module tst
 
 using Revise
+
 import CreditRisk
 import Serialization: serialize
 import Profile: @profile
 import BenchmarkTools: @btime, @benchmark
+
 
 n = 2500
 c = 4

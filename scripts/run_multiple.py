@@ -8,6 +8,9 @@ julia = "{}/julia-0.7.0/bin/julia".format(os.environ['HOME'])
 # julia = "/Applications/Julia-0.7.app/Contents/Resources/julia/bin/julia"
 
 
+if not os.path.isdir("out"):
+    os.mkdir("out")
+
 n = 2500
 c = 4
 s = 5
@@ -26,6 +29,7 @@ for l in [0.1, 0.2, 0.3, 0.4]:
             filename = "{}_ninit_{}_n_{}_c_{}_s_{}_l_{}_ne_{}_rep_{}".format(
                 algo, n_init, n, c, s, l, ne, rep
             )
+            filename = os.path.join("out", filename)
 
             cmd = """
             {julia} src/main.jl --n {n} --c {c} --s {s} --l {l} --nz {nz} --ne {ne} --filename {filename} --n_init {n_init} --a {algo}

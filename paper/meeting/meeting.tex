@@ -1,0 +1,217 @@
+\documentclass[11pt]{article}
+\input{\string~/.macros}
+\usepackage[a4paper, total={6in, 8in}, margin=0.5in]{geometry}
+\usepackage{bbm}
+
+\begin{document}
+
+
+\renewcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\renewcommand{\E}[2][]{\mathbb{E}_{#1}\left\{#2\right\}}
+\renewcommand{\var}[2][]{var_{#1}\left\{#2\right\}}
+\renewcommand{\cov}[1]{cov\{#1\}} 
+\newcommand{\normal}[1]{\mathcal{N}\left(#1\right)}
+\newcommand{\exponents}[1]{exp\left\{#1\right\}}
+\newcommand{\indicator}[1]{\mathbbm{1}_{#1}}
+
+\renewcommand{\bmu}{\boldsymbol{\mu}}
+\renewcommand{\bpi}{\boldsymbol{\pi}}
+\newcommand{\bTheta}{\boldsymbol{\Theta}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\renewcommand{\bphi}{\boldsymbol{\phi}}
+
+
+
+\begin{enumerate}
+    \item \textbf{The risk modeling} \\
+    Given 
+    \[
+        y_n = \beta_n^T \sZ + \sqrt{1 - \beta_n^T \beta_n} \epsilon_n
+    \]
+    where $\sZ \sim \normal{0, I_S}$ and $\epsilon \sim \normal{0, I_N}$, the resulting $y_n \sim \normal{0,1}$ as shown below 
+    \[
+        \E{y_n} = \sum_{i} \beta_{n,i} \E{\sZ_i} + \sqrt{1 - \beta_n^T \beta_n} \E{\epsilon_n} = 0
+    \]
+    \begin{align*}
+        \var{y_n} 
+        &= \E{(y_n - \E{y_n})^2} \\
+        &= \E{ (\beta_n^T \sZ + \sqrt{1 - \beta_n^T \beta_n} \epsilon_n)^2 }\\
+        &= \beta_n^T \beta_n \E{(\sZ - 0)^2} + (1-\beta_n^T \beta_n) \E{(\epsilon_n - 0)^2} \\
+        &= \beta_n^T \beta_n \var{\sZ} + (1-\beta_n^T \beta_n) \var{\epsilon_n} \\
+        &= 1
+    \end{align*}
+    \item \textbf{Motivation for threshold between different states $H_{c(n)}^c$} \\
+    The motivation is to model discrete probability in the credit state matrix with a continuous distribution such as the gaussian. In this cawe, we want to set $H_{c(n)}^c$ such that
+    \[
+        p(H_{c(n)}^{c-1}\leq y_n \leq H_{c(n)}^c) = p_{c(n)}^c
+    \]
+    therefore we can write 
+    \[
+        p(y_n \leq H_{c(n)}^c) = \sum_{\gamma = 1}^c p_{c(n)}^{\gamma}
+        \qquad 
+        \overset{y_n \sim \normal{0,1}}{\longrightarrow} 
+        \qquad 
+        \Phi(H_{c(n)}^c) = \sum_{\gamma = 1}^c p_{c(n)}^{\gamma}
+    \]
+    \item \textbf{Confidence interval for monte carlo estimation}
+    \[
+        p(L_N(\sZ, \epsilon)\geq l) \in 
+        p(L_N(\sZ, \epsilon)\geq l) \pm CI
+    \]
+    Idea is that for the two naive algorithms that are purported to be equivalent, the CI should be approximately the same
+\end{enumerate}
+
+
+\newpage 
+
+\begin{enumerate}
+    \item \textbf{Likelihood Function for Two Level IS} \\
+    Likelihood for the inner sampling conditioned on $Z$ is given by 
+    \[
+        e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)}
+        \qquad \text{where} \qquad 
+        \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
+    \]
+    The likelihood function for the outer sampling of $Z$ consists of the following change of distribution
+    \[
+        Z \sim \normal{0, I}    
+        \qquad \longrightarrow \qquad 
+        Z \sim \normal{\mu, I}
+    \]
+    where $\mu$ is the twisting parameter for the outer importance sampling such that the resulting shifted normal distribution resembles the zero variance IS distribution, in other words,
+    \[
+        \mu = \max_z P(L>x | Z=z) e^{\frac{-z^T z}{2}}
+    \]
+    Then the likelihood for the outer IS is then 
+    \begin{align*}
+        \frac{\normal{0, I}}{\normal{\mu, I}}
+        &= \frac{exp(-\frac{1}{2} z^T z)}{exp(-\frac{1}{2} (z-\mu)^T (z-\mu))} \\ 
+        &= exp
+        \left(
+            -\frac{1}{2} z^T z - \frac{1}{2} z^T z + z^T \mu - \frac{1}{2} \mu^T \mu
+        \right) \\
+        &= e^{ -\mu^T Z + \mu^T \mu /2 } 
+    \end{align*}
+    Therefore, the estimator for probability of tail event is given by 
+    \[
+        \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
+    \]
+\end{enumerate}
+
+\newpage
+
+\subsection*{Likelihood ratio expression}
+
+Show
+\[
+    \prod_{k=1}^m \p{\frac{p_k}{p_{k, \theta}}}^{Y_k} \p{\frac{1 - p_k}{1 - p_{k, \theta}}}^{1 - Y_k}
+    = e^{-\theta L + \phi(\theta)}
+    \quad \quad \text{where} \quad \quad
+    \phi(\theta) = \sum_{k=1}^m \log \p{1 + p_k (e^{\theta c_k} - 1)}
+\]
+\begin{proof}
+    \begin{align*}
+        \textit{lhs}
+        &= \text{exp} \pc{
+            \sum_{k=1}^m Y_k \log \p{\frac{p_k}{p_{k,\theta}}} + (1 - Y_k) \log \p{\frac{1-p_k}{1-p_{k,\theta}}}
+        } \\ 
+        &= \text{exp} \pc{
+            \sum_{k=1}^m Y_k \log \p{1 + p_k (e^{\theta c_k} - 1)} - Y_k \theta c_k + (1 - Y_k) \log \p{1 + p_k\p{e^{\theta c_k} - 1}}
+        } = \textit{rhs} \\
+    \end{align*}
+    where 
+    \[
+        1 - p_{k,\theta} = \frac{1-p_k}{1 + p_k\p{e^{\theta c_k}-1}}    
+    \]
+\end{proof}
+
+
+\newpage 
+
+\subsection*{Glasserman\&Li Algorithm}
+
+\begin{enumerate}
+    \item Outer Level IS for sysmatic risk $Z$ 
+    \begin{enumerate}
+        \item Find shifted parameter $\mu$ for outer IS for $Z$
+        \item Sample $Z \sim \normal{\mu, I}$ 
+    \end{enumerate}
+    \item Inner Level IS for each default indicators $Y_k$ 
+    \begin{enumerate}
+        \item Calculate conditional default probabilities $p_k(Z)$ for $k=1,\cdots, m$
+        \[
+            p_k(Z) = P(Y_k=1 | Z) = p(X_k > x_k | Z) = P(a_k Z + b_k \epsilon_k > \Phi^{-1}(1-p_k) | Z)
+        \]
+        \item Compute the twisted parameters $\theta_x(Z)$ 
+        \[
+            \theta_x(Z) = 
+            \begin{cases}
+                \text{solution to } \frac{\partial}{\partial \theta}\psi_m(\theta, Z) = x & \psi'(0) = \E[p]{L|Z} = \sum_{k=1}^m p_k(Z) c_k < x \\ 
+                0 & otherwise \\ 
+            \end{cases}    
+        \]
+        \item Compute default indicators (bernoulli) from twisted conditional default probabilities
+        \[
+            p_{k,\theta_x(Z)} (Z) = \frac{p_k(Z) e^{\theta_x(Z)c_k}}{1 + p_k(Z)(e^{\theta_x(Z)c_k} - 1)}
+            \qquad 
+            \qquad 
+            k = 1,\cdots, m
+        \]
+        \item Compute Loss $L = c_1 Y_1 + \cdots + c_m Y_m$ under twisted distribution
+    \end{enumerate}
+    \item Return the estimator of tail proabilities
+    \[
+        \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
+    \]
+    Therefore,
+    \[
+        P(L > x) = \E[Z\sim \normal{\mu, I} \, Y_k \sim p_{k, \theta_x(Z)}]{
+            \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
+        }
+    \]
+\end{enumerate}
+
+\newpage 
+\subsection*{Optimization}
+
+Want to solve for 
+\[
+    \max_x \min_y f(x, y)    
+\]
+Same as 
+\[
+    \max_x f(x, \hat{y}(x))
+    \quad \text{where} \quad 
+    \hat{y}(x) = \argmin_y f(x, y)
+\]
+Simply we write as a function of 1 variable
+\[
+    \max_x \hat{f}(x)    
+    \quad \text{where}\quad 
+    \hat{f}(x) = f(x, \hat{y}(x))
+\]
+Want to compute the 1st order and 2nd order derivatives
+\[
+    \hat{f}'(x) = \frac{\partial f}{\partial x} f(x, \hat{y}(x)) + \frac{\partial f}{\partial y} f(x, \hat{y}(x)) \hat{y}'(x)
+\]
+Want to compute $\hat{y}'(x)$ first find critical points
+\[
+    \frac{\partial f}{\partial y} f(x, y) |_{y=\hat{y}(x)} = 0
+\]
+Solve for the function
+\[
+    f_{yx} = \frac{\partial}{\partial x} \frac{\partial}{\partial y} f(x, y) |_{y=\hat{y}(x)}
+\]
+Solve for $\hat{y}'(x)$ 
+\[
+    f_{yx}(x, \hat{y}(x)) + f_{yy}(x, \hat{y}(x)) \hat{y}'(x) = 0
+    \quad \rightarrow \quad 
+    \hat{y}'(x) = - \frac{f_{yx}(x, \hat{y}(x))}{f_{yy}(x, \hat{y}(x))}
+\]
+Then compute second derivative, i.e.  $\hat{f}''(x)$ 
+
+
+
+\end{document}
+ 
+

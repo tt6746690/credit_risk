@@ -7,9 +7,9 @@ REMOTE = wpq@comps0.cs.toronto.edu
 synccode:
 	$(RSYNC) $(RSYNCTAGS) $(SRC_FOLDER) $(REMOTE):/u/wpq/github/credit_risk
 
-data = /h/96/wpq/github/credit_risk/gl_long.txt
+data = /h/96/wpq/github/credit_risk/out/*
 syncdata:
-	$(RSYNC) $(RSYNCTAGS) $(REMOTE):$(data) $(SRC_FOLDER)/
+	$(RSYNC) $(RSYNCTAGS) $(REMOTE):$(data) $(SRC_FOLDER)/data/
 
 synccoderev:
 	$(RSYNC) $(RSYNCTAGS) $(REMOTE):/u/wpq/github/credit_risk/ $(HOME)/github/credit_risk

@@ -100,15 +100,22 @@
 
 \newpage
 
-\subsection*{Likelihood ratio expression}
+\subsection*{Likelihood Expression for Exponential Twisting GL2005}
 
 Show
 \[
     \prod_{k=1}^m \p{\frac{p_k}{p_{k, \theta}}}^{Y_k} \p{\frac{1 - p_k}{1 - p_{k, \theta}}}^{1 - Y_k}
     = e^{-\theta L + \phi(\theta)}
-    \quad \quad \text{where} \quad \quad
-    \phi(\theta) = \sum_{k=1}^m \log \p{1 + p_k (e^{\theta c_k} - 1)}
 \]
+where
+\begin{align*}
+    \phi(\theta) 
+        &= \sum_{k=1}^m \log \p{1 + p_k (e^{\theta c_k} - 1)} \\
+    L 
+        &= \sum_{k=1}^m c_kY_k    \\ 
+    p_{k,\theta} 
+        &= \frac{p_k e^{\theta c_k}}{1 + p_k\p{e^{\theta c_k}-1}}
+\end{align*}
 \begin{proof}
     \begin{align*}
         \textit{lhs}
@@ -121,7 +128,7 @@ Show
     \end{align*}
     where 
     \[
-        1 - p_{k,\theta} = \frac{1-p_k}{1 + p_k\p{e^{\theta c_k}-1}}    
+        1 - p_{k,\theta} = \frac{1-p_k}{1 + p_k\p{e^{\theta c_k}-1}}
     \]
 \end{proof}
 

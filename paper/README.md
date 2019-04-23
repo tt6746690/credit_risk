@@ -53,12 +53,12 @@
 #### Importance Sampling 
 
 
-+ [importance_sampling_a_review_duke](importance_sampling_a_review_duke.pdf)
++ [course_importance_sampling_a_review_duke](course_importance_sampling_a_review_duke.pdf)
 
-+ [psu_astrostatistics_importance_sampling](psu_astrostatistics_importance_sampling.pdf)
++ [psu_astrostatistics_importance_sampling](slides_psu_astrostatistics_importance_sampling.pdf)
     + a set of slides, intro to MC and importance sampling
 
-+ [university_of_arizona_importance_sampling_tom_kennedy](university_of_arizona_importance_sampling_tom_kennedy.pdf)
++ [university_of_arizona_importance_sampling_tom_kennedy](text_importance_sampling_uoa_tom_kennedy.pdf)
     + chapter 6 of Tom Kennedy's book
     + good introduction on
         + importance sampling

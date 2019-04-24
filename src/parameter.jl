@@ -82,7 +82,7 @@ function Parameter(N, C, S, l)
 
     # Computed
     denom = @. sqrt(1 - $sum((β).^2, dims=2))
-    denom = reshape(denom, :)
+    denom = dropdims(denom; dims=2)
     weights = ead ./ sum(ead)
     weights = weights .* lgc
     # Idea is the larger weights/exposure, there is a larger increase in
@@ -143,4 +143,8 @@ function unpack(p::Parameter)
         p.denom,
         p.weights
     )
+end
+
+function Base.show(io::IO, p::Parameter) 
+    println("Parameter (N=$(p.N) C=$(p.C) S=$(p.S) l=$(p.l))")
 end

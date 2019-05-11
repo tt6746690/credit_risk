@@ -42,17 +42,23 @@ end
 " Find difference operator of matrix or vector `B`. Results stored in `A`
     ⚈ no allocation
     ⚈ no array bound checcking
+
+    A       mxn         output matrix containing differences
+    B       (m+1)xn (dims=2) or
+            mx(n+1) (dims=1)
+                        input matrix to be diff-ed
+    dims    dimension along which differences are calculated
 "
 function diff!(A::AbstractMatrix, B::AbstractMatrix; dims::Integer)
     if dims == 1
-        for i=1:size(A,1)-1
-            for j=1:size(A,2)
+        for i=1:size(B,1)-1
+            for j=1:size(B,2)
                 @inbounds A[i,j] = B[i+1,j] - B[i,j]
             end
         end
     elseif dims == 2
-        for i=1:size(A,1)
-            for j=1:size(A,2)-1
+        for i=1:size(B,1)
+            for j=1:size(B,2)-1
                 @inbounds A[i,j] = B[i,j+1] - B[i,j]
             end
         end

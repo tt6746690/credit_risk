@@ -2,6 +2,8 @@
 *.aux
 *.log
 *.out
+*.fdb_latexmk
+*.fls
 *.synctex.gz
 
 .ipynb_checkpoints/

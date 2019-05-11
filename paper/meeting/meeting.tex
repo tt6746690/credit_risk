@@ -20,7 +20,7 @@
 \newcommand{\bSigma}{\boldsymbol{\Sigma}}
 \renewcommand{\bphi}{\boldsymbol{\phi}}
 
-
+\subsection*{Adam 2008}
 
 \begin{enumerate}
     \item \textbf{The risk modeling} \\
@@ -62,45 +62,74 @@
 \end{enumerate}
 
 
-\newpage 
+\newpage
+\subsection*{GL 2005: Inner Level Optimization}
 
-\begin{enumerate}
-    \item \textbf{Likelihood Function for Two Level IS} \\
-    Likelihood for the inner sampling conditioned on $Z$ is given by 
-    \[
-        e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)}
-        \qquad \text{where} \qquad 
-        \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
-    \]
-    The likelihood function for the outer sampling of $Z$ consists of the following change of distribution
-    \[
-        Z \sim \normal{0, I}    
-        \qquad \longrightarrow \qquad 
-        Z \sim \normal{\mu, I}
-    \]
-    where $\mu$ is the twisting parameter for the outer importance sampling such that the resulting shifted normal distribution resembles the zero variance IS distribution, in other words,
-    \[
-        \mu = \max_z P(L>x | Z=z) e^{\frac{-z^T z}{2}}
-    \]
-    Then the likelihood for the outer IS is then 
-    \begin{align*}
-        \frac{\normal{0, I}}{\normal{\mu, I}}
-        &= \frac{exp(-\frac{1}{2} z^T z)}{exp(-\frac{1}{2} (z-\mu)^T (z-\mu))} \\ 
-        &= exp
-        \left(
-            -\frac{1}{2} z^T z - \frac{1}{2} z^T z + z^T \mu - \frac{1}{2} \mu^T \mu
-        \right) \\
-        &= e^{ -\mu^T Z + \mu^T \mu /2 } 
-    \end{align*}
-    Therefore, the estimator for probability of tail event is given by 
-    \[
-        \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
-    \]
-\end{enumerate}
+Inner level optimization involves 
+\[
+    \min_{\theta \geq 0} \pc{
+        -\theta l + \psi(\theta)
+    }
+    \quad\quad
+    \text{where}
+    \quad\quad
+    \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
+\]
+$\psi$ is strictly convex and passes through the origin. The above optimization is equivalent to 
+\[
+    \theta^* = 
+    \begin{cases}
+        \text{solution to } \frac{\partial \psi}{\partial \theta} = l & l > \frac{\partial\psi}{\partial\theta} |_{\theta=0} \\
+        0 & \text{otherwise}
+    \end{cases}    
+\]
+where
+\[
+    \frac{\partial\psi}{\partial\theta} \bigl\vert_{\large\theta=0}
+        = \sum_{k=1}^m \frac{p_k e^{\theta c_k}  c_k}{1 + p_k (e^{\theta c_k} - 1)} \bigl\vert_{\large\theta=0}
+        = \sum_{k=1}^m p_k c_k
+\]
+
+
+\newpage 
+\subsection*{GL 2005: Likelihood Function for Two Level IS}
+
+
+Likelihood for the inner sampling conditioned on $Z$ is given by 
+\[
+    e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)}
+    \qquad \text{where} \qquad 
+    \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
+\]
+The likelihood function for the outer sampling of $Z$ consists of the following change of distribution
+\[
+    Z \sim \normal{0, I}    
+    \qquad \longrightarrow \qquad 
+    Z \sim \normal{\mu, I}
+\]
+where $\mu$ is the twisting parameter for the outer importance sampling such that the resulting shifted normal distribution resembles the zero variance IS distribution, in other words,
+\[
+    \mu = \max_z P(L>x | Z=z) e^{\frac{-z^T z}{2}}
+\]
+Then the likelihood for the outer IS is then 
+\begin{align*}
+    \frac{\normal{0, I}}{\normal{\mu, I}}
+    &= \frac{exp(-\frac{1}{2} z^T z)}{exp(-\frac{1}{2} (z-\mu)^T (z-\mu))} \\ 
+    &= exp
+    \left(
+        -\frac{1}{2} z^T z - \frac{1}{2} z^T z + z^T \mu - \frac{1}{2} \mu^T \mu
+    \right) \\
+    &= e^{ -\mu^T Z + \mu^T \mu /2 } 
+\end{align*}
+Therefore, the estimator for probability of tail event is given by 
+\[
+    \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
+\]
+
 
 \newpage
 
-\subsection*{Likelihood Expression for Exponential Twisting GL2005}
+\subsection*{GL 2005: Likelihood Expression for Exponential Twisting}
 
 Show
 \[
@@ -135,7 +164,7 @@ where
 
 \newpage 
 
-\subsection*{Glasserman\&Li Algorithm}
+\subsection*{GL 2005: Algorithm}
 
 \begin{enumerate}
     \item Outer Level IS for sysmatic risk $Z$ 

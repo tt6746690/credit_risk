@@ -33,11 +33,9 @@ end
 
 
 """
-    onelvl_mc(parameter::Parameter, nz::Int64, io::IO=Union{IO, Nothing}=nothing)
-
-    One level Monte Carlo simulation using
-        conditional portfolio loss approaches in distribution to standard normal distribution
-        (L - μ) / σ  ⟶ N(0, 1)
+One level Monte Carlo simulation using
+    conditional portfolio loss approaches in distribution to standard normal distribution
+    (L - μ) / σ  ⟶ N(0, 1)
 """
 function onelvl_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothing)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
@@ -84,7 +82,7 @@ end
 
 
 """
-    Approximating the zero variance importance sampler
+Approximating the zero variance importance sampler
 """
 function onelvlISCLT_mc(parameter::Parameter, nz::Int64, io::Union{IO, Nothing}=nothing)
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)

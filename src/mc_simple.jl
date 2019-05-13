@@ -1,6 +1,4 @@
 """
-    simple_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
-
 Naive Monte Carlo Sampling for computing default probability: P(L ⩾ l).
 Returns the Monte Carlo estimate of default probability
 

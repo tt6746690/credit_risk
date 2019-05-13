@@ -1,6 +1,4 @@
 """
-    bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::Union{IO, Nothing}=nothing)
-
 Monte Carlo Sampling for computing default probability: P(L ⩾ l), where
 inner level sampling of `ε` is replaced with sampling of bernoulli random variables
 
@@ -34,10 +32,14 @@ function bernoulli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io
     estimate = 0
     estimates = zeros(ne)
     for i = 1:nz
-        rand!(Zdist, Z)
-        @. phi = normcdf((H - $(β*Z)) / denom)
-        diff!(pnc, phi0; dims=2)
+        # rand!(Zdist, Z)
+        # @. phi = normcdf((H - $(β*Z)) / denom)
+        # diff!(pnc, phi0; dims=2)
         for j = 1:ne
+            rand!(Zdist, Z)
+            @. phi = normcdf((H - $(β*Z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            
             rand!(u)
             @. W = (pn1 >= u)
             @. losses = w1 * W

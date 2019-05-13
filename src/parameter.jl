@@ -94,8 +94,8 @@ end
 parameter_filename(n, c, s, l) = "n_$(n)_c_$(c)_s_$(s)_l_$(l)"
 
 """
-    tofrom_file: save to / load from file when set to `true`
-                otherwise, just create new `Parameter`
+tofrom_file: save to / load from file when set to `true`
+            otherwise, just create new `Parameter`
 """
 function Parameter(N, C, S, l, tofrom_file::Bool)
 

@@ -7,6 +7,7 @@
 
 
 \renewcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left|#1\right|}
 \renewcommand{\E}[2][]{\mathbb{E}_{#1}\left\{#2\right\}}
 \renewcommand{\var}[2][]{var_{#1}\left\{#2\right\}}
 \renewcommand{\cov}[1]{cov\{#1\}} 
@@ -97,7 +98,7 @@ where
 
 Likelihood for the inner sampling conditioned on $Z$ is given by 
 \[
-    e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)}
+    e^{-\theta_x(Z)L + \psi(\theta_x(Z), Z)}
     \qquad \text{where} \qquad 
     \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
 \]
@@ -117,13 +118,13 @@ Then the likelihood for the outer IS is then
     &= \frac{exp(-\frac{1}{2} z^T z)}{exp(-\frac{1}{2} (z-\mu)^T (z-\mu))} \\ 
     &= exp
     \left(
-        -\frac{1}{2} z^T z - \frac{1}{2} z^T z + z^T \mu - \frac{1}{2} \mu^T \mu
+        -\frac{1}{2} z^T z + \frac{1}{2} z^T z + z^T \mu - \frac{1}{2} \mu^T \mu
     \right) \\
     &= e^{ -\mu^T Z + \mu^T \mu /2 } 
 \end{align*}
 Therefore, the estimator for probability of tail event is given by 
 \[
-    \mathbbm{1}_{L>x} e^{\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
+    \mathbbm{1}_{L>x} e^{-\theta_x(Z)L + \psi(\theta_x(Z), Z)} e^{ -\mu^T Z + \mu^T \mu /2 }
 \]
 
 
@@ -206,6 +207,49 @@ where
         }
     \]
 \end{enumerate}
+
+
+\newpage 
+\subsection*{GL 2008: Likelihood Function for Two Level IS}
+
+Likelihood for the inner sampling conditioned on $Z$ is given by 
+\[
+    e^{-\theta_x(Z)L + \psi(\theta_x(Z), Z)}
+    \qquad \text{where} \qquad 
+    \psi(\theta) = \sum_{k=1}^m \log (1 + p_k (e^{\theta c_k} - 1))
+\]
+The likelihood function for the outer sampling of $Z$ consists of the following change of distribution
+\[
+    \bZ \sim \normal{\mathbf{0}, \bI}
+    \qquad \longrightarrow \qquad 
+    \bZ \sim \sum_{i=1}^K \lambda_{i} \normal{\bmu_i, \bI}
+\]
+% e^{
+%         \bmu_i^T \bZ - \frac{1}{2} \bmu_i^T \bmu_i
+%     }
+where $K = \abs{\sS_q}$ and $i$ denotes some ordering of elements $\sF \in \sS_q$. $\bmu_1,\cdots,\bmu_K$ are shifted means for the Gaussian distribution, and $\lambda_1,\cdots, \lambda_K$ where $\textstyle\sum_i \lambda_i = 1$ are the corresponding coefficients for the mixture. Then the likelihood for the outer IS is then 
+\begin{align*}
+    \frac{\normal{\mathbf{0}, \bI}}{\sum_{i=1}^K \lambda_{i} \normal{\bmu_i, \bI}}
+    &= \p{
+        \frac{\sum_{i=1}^K \lambda_{i} \normal{\bmu_i, \bI}}{\normal{\mathbf{0}, \bI}}
+    }^{-1} \\
+    &= \p{
+        \sum_i \lambda_i \frac{e^{-\frac{1}{2} (\bZ - \bmu_i)^T(\bZ - \bmu_i)}}{ e^{-\frac{1}{2} \bZ^T \bZ} }
+    }^{-1} \\
+    &= \p{
+        \sum_i \lambda_i e^{ \frac{1}{2}\bZ^T\bZ - \frac{1}{2} \bZ^T\bZ + \bZ^T \bmu_i - \frac{1}{2} \bmu_i^T \bmu_i }
+    }^{-1} \\ 
+    &= \p{
+        \sum_{i=1}^K \lambda_{i} e^{\bmu_i^T \bZ - \frac{1}{2}\bmu_i^T\bmu_i }
+    }^{-1}
+\end{align*}
+Therefore, the estimator for probability of tail event is given by 
+\[
+    \mathbbm{1}_{L>x} e^{-\theta_x(Z)L + \psi(\theta_x(Z), Z)} \p{
+        \sum_{i=1}^K \lambda_{i} e^{\bmu_i^T \bZ - \frac{1}{2}\bmu_i^T\bmu_i }
+    }^{-1}
+\]
+
 
 \newpage 
 \subsection*{Optimization}

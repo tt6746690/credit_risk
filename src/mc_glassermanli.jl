@@ -150,31 +150,27 @@ end
 
 
 """
-    glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, io::IO=Union{IO, Nothing}=nothing)
+Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
+    of Z and weights w
+    ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
+    ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
 
-    Monte Carlo Sampling for computing default probability: P(L ⩾ l), with importance sampling
-        of Z and weights w
-       ⋅ Z ∼ N(μ, I) where μ is shifted mean that minimizes variance
-       ⋅ W ∼ q       where q is shifted bernoulli probability that minimizes upper bound on the variance
+Access intermediate estimates
 
-    Access intermediate estimates
+    # 1. create IOBuffer
+    # 2. feed io to the argument
+    # 3. get estimate as usual
+    # 4. the intermediate estimates also available
 
-        # 1. create IOBuffer
-        io = IOBuffer()
-
-        # 2. feed io to the argument
-        estimate = CreditRisk.glassermanli_mc(param, (100,100), (zeros(s), 0), io)
-
-        # 3. get estimate as usual
-        println(estimate)
-
-        # 4. the intermediate estimates also available
-        estimates = String(take!(io))
-        println("---")
-        println(estimates[end-100:end])
+    io = IOBuffer()
+    estimate = CreditRisk.glassermanli_mc(param, (100,100), (zeros(s), 0), io)
+    println(estimate)
+    estimates = String(take!(io))
+    println("---")
+    println(estimates[end-100:end])
 
 """
-function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing, nothing), io::Union{IO, Nothing}=nothing)
+function gl2005_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64}, extra_params=(nothing, nothing, nothing), io::Union{IO, Nothing}=nothing)
     nz, ne = sample_size
     (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
     (mu, theta, n_initial) = extra_params
@@ -208,21 +204,36 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
     estimate = 0
     estimates = zeros(ne)
     for i = 1:nz
-        rand!(Zdist, Z)
-        @. phi = normcdf((H - $(β*Z)) / denom)
-        diff!(pnc, phi0; dims=2)
-        # Twist bernoulli distribution pnc → qnc
-        if theta == nothing
-            twist!(innerlevel, pnc, weights, l)
-            θ = get_result(innerlevel)
-        else
-            θ = theta
-        end
-        @. twist = pnc*ℯ^(θ*weights)
-        sum!(mgf, twist)
-        @. qnc = twist / mgf
+        # rand!(Zdist, Z)
+        # @. phi = normcdf((H - $(β*Z)) / denom)
+        # diff!(pnc, phi0; dims=2)
+        # # Twist bernoulli distribution pnc → qnc
+        # if theta == nothing
+        #     twist!(innerlevel, pnc, weights, l)
+        #     θ = get_result(innerlevel)
+        # else
+        #     θ = theta
+        # end
+        # @. twist = pnc*ℯ^(θ*weights)
+        # sum!(mgf, twist)
+        # @. qnc = twist / mgf
 
         for j = 1:ne
+
+            rand!(Zdist, Z)
+            @. phi = normcdf((H - $(β*Z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            # Twist bernoulli distribution pnc → qnc
+            if theta == nothing
+                twist!(innerlevel, pnc, weights, l)
+                θ = get_result(innerlevel)
+            else
+                θ = theta
+            end
+            @. twist = pnc*ℯ^(θ*weights)
+            sum!(mgf, twist)
+            @. qnc = twist / mgf
+            
             # Sample weights from bernoulli distribution
             rand!(u)
             @. W = (qn1 >= u)
@@ -235,7 +246,78 @@ function glassermanli_mc(parameter::Parameter, sample_size::Tuple{Int64, Int64},
             if k % 500 == 0
                 record_current(io, i, j, k, estimate, estimates)
             end
+        end
+        estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
+    end
+    return estimate
+end
 
+"""
+Glasserman&Li 2008 mixture of shifts
+"""
+function gl2008_mc(
+    parameter::Parameter,
+    sample_size::Tuple{Int64, Int64},
+    extra_params=(nothing, nothing, nothing),
+    io::Union{IO, Nothing}=nothing)
+
+    nz, ne = sample_size
+    (N, C, S, l, cmm, ead, lgc, cn, β, H, denom, weights) = unpack(parameter)
+    (μs, theta, n_initial) = extra_params
+
+    μ = zeros(S)
+    Z = zeros(S)
+    phi0 = zeros(N, C+1)
+    phi  = @view phi0[:,2:end]
+    pnc = zeros(N, C)
+    twist = zeros(N, C)
+    mgf = zeros(N)
+    qnc = zeros(N, C)
+    qn1 = @view qnc[:,1]
+    u = zeros(N)
+    W = zeros(N)
+    w1 = @view weights[:,1]
+    losses = zeros(N)
+
+    outerlevel = OuterLevelTwisting(N, C, S, n_initial)
+    innerlevel = InnerLevelTwisting(N, C)
+    Ψ = init_Ψ()
+
+    Zdist_unit = MvNormal(zeros(S), 1)
+    Zdist = MixtureModel(map(i -> MvNormal(μs[i,:], 1), 1:size(μs,1)))
+
+    estimate = 0
+    estimates = zeros(ne)
+    for i = 1:nz
+        for j = 1:ne
+
+            rand!(Zdist, Z)
+            @. phi = normcdf((H - $(β*Z)) / denom)
+            diff!(pnc, phi0; dims=2)
+            # Twist bernoulli distribution pnc → qnc
+            if theta == nothing
+                twist!(innerlevel, pnc, weights, l)
+                θ = get_result(innerlevel)
+            else
+                θ = theta
+            end
+            @. twist = pnc*ℯ^(θ*weights)
+            sum!(mgf, twist)
+            @. qnc = twist / mgf
+            
+            # Sample weights from bernoulli distribution
+            rand!(u)
+            @. W = (qn1 >= u)
+            L = w1 ⋅ W
+
+            lr = e^(-θ*L + Ψ(θ, pnc, weights)) * (pdf(Zdist_unit, Z) / pdf(Zdist,Z))
+
+            estimates[j] = (L >= l)*lr
+
+            k = (i-1)*ne+j
+            if k % 500 == 0
+                record_current(io, i, j, k, estimate, estimates)
+            end
         end
         estimate = (1-1/i)*estimate + (1/i)*mean(estimates)
     end

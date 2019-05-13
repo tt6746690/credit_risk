@@ -3,7 +3,7 @@ module CreditRisk
 import Random: rand!
 import Base.MathConstants: e
 import LinearAlgebra: mul!, ⋅, dot
-import Distributions: pdf, cdf, Normal, MvNormal, TDist
+import Distributions: pdf, cdf, Normal, MvNormal, TDist, MixtureModel
 import Statistics: mean, quantile, var
 
 import Serialization: serialize, deserialize
@@ -37,7 +37,7 @@ export msexpr, checksize, diff!, normcdf, invnormcdf, invtcdf
 export Parameter, unpack
 export slicesample
 export InnerLevelTwisting, OuterLevelTwisting, twist!, init_Ψ, get_result, set_result!
-export simple_mc, bernoulli_mc, glassermanli_mc, onelvl_mc, onelvlISCLT_mc
+export simple_mc, bernoulli_mc, gl2005_mc, gl2008_mc, onelvl_mc, onelvlISCLT_mc
 export make_replications, plot_replications, make_replications_b
 
 end
